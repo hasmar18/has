@@ -49,6 +49,13 @@ Předpoklady: účet na GitHubu (repozitář `hasmar18/has`) a na [render.com](h
 
 **Plán:** web na `starter` (≈ 7 USD/měs.), databáze `basic-256mb` (≈ 6 USD/měs.). Bezplatná webová služba usíná (upomínky a synchronizace by nefungovaly) a bezplatná databáze po 30 dnech zaniká – pro ostrý provoz nevhodné. Aktuální ceny ověřte na [render.com/pricing](https://render.com/pricing).
 
+## Levná varianta (téměř zdarma) – s riziky
+Aplikace má všechny úlohy v databázi, takže jí restart nevadí (nic se neztratí). Proto jde zkusit:
+- **Web:** Render *Free* (750 instančních hodin měsíčně vystačí na jednu službu nonstop) + bezplatný monitoring [UptimeRobot](https://uptimerobot.com) volající `https://VAŠE-DOMÉNA/healthz` každých 5 minut, aby web neusnul.
+- **Databáze:** [Supabase](https://supabase.com) *Free* (neexpiruje po 30 dnech jako Render; neaktivní projekt se po týdnu pozastaví, ale aplikace se na DB dotazuje neustále). Použijte **Session pooler** connection string (IPv4, podporuje zámky) jako `DATABASE_URL` a nastavte `DATABASE_SSL=1`. V `render.yaml` pak odeberte sekci `databases` a `DATABASE_URL` zadejte ručně.
+- **Rizika:** bezplatné plány nemají záruky ani zálohy, mohou se změnit nebo zrušit; Render Free může službu kdykoli restartovat a je pomalejší. Pro ostrý provoz s platícími klientkami doporučuji placený plán. Aktuální limity před použitím ověřte u poskytovatelů.
+- **Cloudflare Workers/Pages + Firebase:** nevhodné bez přepsání. Aplikace je dlouho běžící Node server nad PostgreSQL; ochrana proti dvojí rezervaci stojí na PostgreSQL omezení a zámcích, které na Workers/SQLite/Firestore nejsou. Přepis by znamenal nový backend.
+
 ## Brevo (e-maily)
 1. Účet na brevo.com (bezplatný plán má denní limit odeslaných e-mailů – ověřte aktuální limit; pro malé studio stačí).
 2. **Senders, Domains & Dedicated IPs → Domains**: přidejte a ověřte svou doménu (DNS záznamy **SPF, DKIM, DMARC** zadejte u správce domény). Bez ověřené domény půjdou e-maily do spamu nebo je Brevo odmítne.

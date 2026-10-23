@@ -284,7 +284,7 @@ export function mount(app) {
     name: z.string().trim().min(2).max(120), description: z.string().trim().max(2000).default(''),
     duration_minutes: z.number().int().min(5).max(720), price_czk: z.number().int().min(0).max(1_000_000).nullable().default(null),
     price_from: z.boolean().default(false), category_id: uuid.nullable().default(null), is_active: z.boolean().default(true),
-    image_url: z.string().trim().max(200).regex(/^\/(img|media)\/[A-Za-z0-9._-]+$/, 'Neplatný obrázek.').nullable().default(null),
+    image_url: z.string().trim().max(200).regex(/^(\/(img|media)\/[A-Za-z0-9._-]+|https:\/\/images\.unsplash\.com\/photo-[A-Za-z0-9-]+(\?[A-Za-z0-9=&._%-]*)?)$/, 'Neplatný obrázek.').nullable().default(null),
     is_verified: z.boolean().default(false), source_note: z.string().trim().max(300).nullable().default(null), sort_order: z.number().int().default(0),
   });
 

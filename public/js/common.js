@@ -50,15 +50,15 @@ export function chrome(active, content, logoId) {
     h('nav', { class: 'main', id: 'mainnav', 'aria-label': 'Hlavní navigace' },
       NAV.map(([href, t]) => h('a', { href, ...(href === active ? { 'aria-current': 'page' } : {}) }, t)),
       h('a', { class: 'btn sm', href: '/rezervace' }, 'Rezervovat'))));
-  $('.logo', hdr).innerHTML = logoId ? '<img class="logo-img" alt="" width="36" height="36"><span>HASNAILS</span>' : `${LOGO}<span>HASNAILS</span>`;
-  if (logoId) $('.logo-img', hdr).src = `/media/${logoId}`;
+  $('.logo', hdr).innerHTML = '<img class="logo-img" alt="HASNAILS" width="58" height="38">';
+  $('.logo-img', hdr).src = logoId ? `/media/${logoId}` : '/img/logo.png';
   const c = content || {};
   const ftr = h('footer', { class: 'site' }, h('div', { class: 'wrap' }, h('div', { class: 'cols' },
     h('div', {}, h('strong', { text: 'HASNAILS' }), h('p', { class: 'small', text: c.contact_name || '' }), h('p', { class: 'small', text: c.contact_address || '' })),
     h('div', {}, h('p', { class: 'small' }, c.contact_phone ? h('a', { href: `tel:${(c.contact_phone || '').replace(/\s/g, '')}` }, c.contact_phone) : ''),
       c.instagram_url ? h('p', { class: 'small' }, h('a', { href: c.instagram_url, rel: 'noopener', target: '_blank' }, 'Instagram')) : ''),
     h('div', { class: 'small' }, h('p', {}, h('a', { href: '/podminky' }, 'Obchodní podmínky')), h('p', {}, h('a', { href: '/ochrana-udaju' }, 'Ochrana osobních údajů (GDPR)')), c.footer_note ? h('p', { text: c.footer_note }) : ''),
-  ), h('p', { class: 'small', text: `© ${new Date().getFullYear()} HASNAILS` })));
+  ), h('p', { class: 'small', text: `© ${new Date().getFullYear()} HASNAILS · ilustrační fotografie: Unsplash` })));
   document.body.prepend(h('a', { class: 'skip', href: '#main' }, 'Přeskočit na obsah'), hdr);
   document.body.append(ftr);
 }
@@ -71,7 +71,7 @@ export async function initPage(active) {
 export function serviceCard(s, { onclick, href } = {}) {
   const plus = href ? h('a', { class: 'plus', href, 'aria-label': `Rezervovat: ${s.name}` }, '+') : h('button', { class: 'plus', type: 'button', onclick, 'aria-label': `Vybrat: ${s.name}` }, '+');
   return h('div', { class: 'svc-card' },
-    h('img', { class: 'svc-img', src: s.image_url || '/img/ilu-klasicka.svg', alt: '', loading: 'lazy', width: 96, height: 96 }),
+    (() => { const im = h('img', { class: 'svc-img', src: s.image_url || '/img/ilu-klasicka.svg', alt: '', loading: 'lazy', width: 96, height: 96 }); im.addEventListener('error', () => { if (!im.src.endsWith('.svg')) im.src = '/img/ilu-klasicka.svg'; }); return im; })(),
     h('div', { class: 'svc-body' }, h('h4', { text: s.name }), s.description ? h('p', { class: 'svc-desc', text: s.description }) : '',
       h('div', { class: 'svc-meta' }, h('span', { text: dur(s.duration_minutes) }), s.price_czk != null ? h('strong', { text: `${s.price_from ? 'od ' : ''}${money(s.price_czk)}` }) : '')),
     plus);
