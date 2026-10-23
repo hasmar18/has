@@ -76,8 +76,10 @@ test('SOUBĚŽNOST na úrovni databáze: omezení v PostgreSQL samo brání pře
     `INSERT INTO bookings (service_id, service_name, service_duration_minutes, client_name, client_email, starts_at, ends_at, blocked_until, status)
      VALUES ($1, 'x', 60, 'A', 'a@a.cz', $2, $3, $3, 'confirmed')`, [svc.id, s, e]).then(() => 'ok', (err) => err.code);
   const res = await Promise.all(Array.from({ length: 12 }, attempt));
-  assert.equal(res.filter((r) => r === 'ok').length, 1);
-  assert.equal(res.filter((r) => r === '23P01').length, 11, 'ostatní selžou na EXCLUDE omezení');
+  // Při souběžných vloženích do GiST omezení může PostgreSQL místo 23P01 vrátit i detekovaný deadlock (40P01) – obojí je správné odmítnutí.
+  assert.equal(res.filter((r) => r === 'ok').length, 1, JSON.stringify(res));
+  assert.ok(res.filter((r) => r !== 'ok').every((r) => ['23P01', '40P01'].includes(r)), `ostatní selžou na omezení: ${JSON.stringify(res)}`);
+  assert.equal((await query(`SELECT count(*)::int AS n FROM bookings WHERE starts_at = $1 AND status = 'confirmed'`, [s])).rows[0].n, 1);
 });
 
 test('držení termínu vyprší a termín se uvolní; vypršelou rezervaci nelze potvrdit', async () => {
