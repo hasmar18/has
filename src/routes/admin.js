@@ -48,7 +48,6 @@ export function mount(app) {
       query(`SELECT 1 FROM users WHERE role = 'admin' AND must_change_password LIMIT 1`),
     ]);
     const emailOk = emailProviderConfigured();
-    const legalContent = await getContent();
     const checklist = [
       { key: 'services', ok: svc.rows[0].n > 0, label: 'Přidejte alespoň jednu službu (Služby).' },
       { key: 'prices', ok: noPrice.rows[0].n === 0, label: `Doplňte ceny u služeb (${noPrice.rows[0].n} bez ceny) – Služby.` },
@@ -56,7 +55,6 @@ export function mount(app) {
       { key: 'email', ok: emailOk, label: 'Nakonfigurujte odesílání e-mailů – proměnné BREVO_API_KEY a MAIL_FROM_EMAIL v prostředí Renderu.' },
       { key: 'calendar', ok: conn.rows[0].total > 0, label: 'Propojte kalendář (Nastavení → Kalendář).', optional: true },
       { key: 'calendar_write', ok: Number(conn.rows[0].writers) > 0 || conn.rows[0].total === 0, label: 'Vyberte kalendář, do kterého se zapisují rezervace.', optional: true },
-      { key: 'legal', ok: legalContent.terms_text.length > 400 && legalContent.privacy_text.length > 400, label: 'Doplňte obchodní podmínky a zásady ochrany osobních údajů (Obsah webu) – zatím obsahují jen údaje o provozovateli.' },
       { key: 'reviewed', ok: settings.settings_reviewed, label: 'Zkontrolujte nastavení (storno lhůta, rezerva, předstih) a právní texty, pak to potvrďte v Nastavení.' },
       { key: 'encryption', ok: Boolean(config.encryptionKey) || !config.isProd, label: 'Chybí ENCRYPTION_KEY.' },
       { key: 'https', ok: config.baseUrl.startsWith('https://') || !config.isProd, label: 'BASE_URL musí být https adresa webu.' },
