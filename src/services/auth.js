@@ -109,8 +109,8 @@ export async function login({ email, password, userAgent }) {
   const ok = await verifyPassword(password, u.password_hash);
   if (!ok) {
     const n = u.failed_logins + 1;
-    await query(`UPDATE users SET failed_logins = $2, locked_until = CASE WHEN $2 >= $3 THEN now() + ($4 || ' milliseconds')::interval ELSE locked_until END WHERE id = $1`,
-      [u.id, n, MAX_FAILED, String(LOCK_MS)]);
+    await query(`UPDATE users SET failed_logins = $2::int, locked_until = CASE WHEN $2::int >= $3::int THEN now() + ($4::int * interval '1 millisecond') ELSE locked_until END WHERE id = $1`,
+      [u.id, n, MAX_FAILED, LOCK_MS]);
     throw unauthorized('Nesprávný e-mail nebo heslo.');
   }
   await query(`UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = $1`, [u.id]);
