@@ -297,3 +297,15 @@ test('bezpečnostní hlavičky a statické soubory: path traversal se neprojeví
   }
   assert.equal((await c.get('/api/neexistuje')).status, 404);
 });
+
+test('bez vyžadovaného ověření e-mailu se rezervace potvrdí hned', async () => {
+  await updateSettings({ query }, { require_email_verification: false });
+  try {
+    const c = new Client(server.url);
+    const r = await c.post('/api/bookings', body({ email: 'novy@example.cz' }));
+    assert.equal(r.status, 200); assert.equal(r.body.needs_verification, false); assert.equal(r.body.booking.status, 'confirmed');
+    await drainJobs();
+    assert.ok(sentEmails.find((m) => m.to === 'novy@example.cz'), 'potvrzovací e-mail odešel');
+    assert.equal((await slotsFor(c, WED())).includes('10:00'), false, 'termín je obsazený');
+  } finally { await updateSettings({ query }, { require_email_verification: true }); }
+});

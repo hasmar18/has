@@ -107,7 +107,7 @@ export async function seedBasics({ buffer = 0, interval = 30, hours = [[9, 17]] 
   }
   const svc = (await query(`INSERT INTO services (name, description, duration_minutes, price_czk, is_verified) VALUES ('Testovací služba', 'popis', 60, 500, true) RETURNING *`)).rows[0];
   const svc30 = (await query(`INSERT INTO services (name, description, duration_minutes, price_czk) VALUES ('Krátká služba', '', 30, 250) RETURNING *`)).rows[0];
-  await updateSettings({ query }, { online_booking_enabled: true, buffer_minutes: buffer, slot_interval_minutes: interval, min_notice_hours: 1, max_advance_days: 120, cancel_hours_before: 24, hold_minutes: 15 });
+  await updateSettings({ query }, { online_booking_enabled: true, require_email_verification: true, buffer_minutes: buffer, slot_interval_minutes: interval, min_notice_hours: 1, max_advance_days: 120, cancel_hours_before: 24, hold_minutes: 15 });
   return { svc, svc30 };
 }
 

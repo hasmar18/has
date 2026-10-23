@@ -12,6 +12,7 @@ export const SETTING_DEFS = {
   min_notice_hours: { def: 12, schema: z.number().min(0).max(24 * 30) },
   max_advance_days: { def: 60, schema: z.number().int().min(1).max(365) },
   cancel_hours_before: { def: 24, schema: z.number().min(0).max(24 * 30) },
+  require_email_verification: { def: false, schema: z.boolean() },
   hold_minutes: { def: 15, schema: z.number().int().min(3).max(60) },
   reminder_hours_before: { def: [24], schema: z.array(z.number().int().min(1).max(24 * 14)).max(3) },
   fail_closed: { def: true, schema: z.boolean() },

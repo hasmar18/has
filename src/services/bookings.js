@@ -154,7 +154,7 @@ export async function createOnlineBooking({ serviceId, startsAt, name, email, ph
       const endsAt = addMinutes(startsAt, service.duration_minutes);
       const blockedUntil = addMinutes(endsAt, settings.buffer_minutes);
       const verifiedUser = user && user.email_verified_at && user.email.toLowerCase() === normEmail;
-      const status = verifiedUser ? 'confirmed' : 'held';
+      const status = (verifiedUser || !settings.require_email_verification) ? 'confirmed' : 'held';
       const holdExpires = status === 'held' ? addMinutes(now, settings.hold_minutes) : null;
       const code = status === 'held' ? randomCode() : null;
 
