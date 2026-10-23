@@ -1,0 +1,18 @@
+{
+  "name": "hasnails",
+  "version": "1.0.0",
+  "description": "HASNAILS – web a rezervační systém nehtového studia",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node src/server.js",
+    "migrate": "node src/scripts/migrate.js",
+    "create-admin": "node src/scripts/create-admin.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=90000 test/*.test.js"
+  },
+  "dependencies": {
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  }
+}
