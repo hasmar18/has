@@ -7,13 +7,13 @@ export async function seedDefaults() {
 }
 
 // Výchozí nabídka služeb: názvy, popisy a délky převzaty ze snímků rezervačního systému dodaných majitelkou.
-// CENY NEBYLY V PODKLADECH – zůstávají prázdné a doplní se v administraci. Texty označené jako zkrácené byly v podkladu useknuté („Přečíst více“).
+// CENY NEBYLY V PODKLADECH – zůstávají prázdné a doplní se v administraci. Popisy jsou kompletní (zkrácené texty z náhledů doplnila majitelka).
 const SERVICES = [
   ['Manikúra', 'Gellak', 'Aplikace gelového laku na přírodní nehty. Zahrnuje kompletní začištění nehtového okolí, zpevnění nehtu a zvolení vhodného materiálu.', 120, '/img/ilu-gellak.svg', false],
-  ['Manikúra', 'Klasická manikúra', 'Klasická manikúra je ideální volbou pro každého, kdo touží po upravených nehtech, zdravé kůžičce a příjemném relaxu. Jedná se o šetrné ošetření přírodních nehtů.', 30, '/img/ilu-klasicka.svg', true],
+  ['Manikúra', 'Klasická manikúra', 'Klasická manikúra je ideální volbou pro každého, kdo touží po upravených nehtech, zdravé kůžičce a příjemném relaxu. Jedná se o šetrné ošetření přírodních nehtů, které zanechá vaše ruce pěstěné a svěží.', 30, '/img/ilu-klasicka.svg', false],
   ['Manikúra', 'COMBO Mani a Pedi', 'Manikúra a pedikúra při jednom sezení', 240, '/img/ilu-combo.svg', false],
   ['Pedikúra', 'Přístrojová pedikúra', '(Základní ošetření nohou, dezinfekce, diagnostika plosek nohou, úprava nehtů a nehtového okolí, odstranění zrohovatělé kůže, péče pro okolí nehtů, hydratační výživa pokožky)', 60, '/img/ilu-pedikura.svg', false],
-  ['Pedikúra', 'Přístrojová pedikúra + gellak', '(Základní ošetření nohou, dezinfekce, diagnostika plosek nohou, úprava nehtů a nehtového okolí, aplikace gellaku, odstranění zrohovatělé kůže, péče pro okolí nehtů)', 120, '/img/ilu-pedikura-gellak.svg', true],
+  ['Pedikúra', 'Přístrojová pedikúra + gellak', '(Základní ošetření nohou, dezinfekce, diagnostika plosek nohou, úprava nehtů a nehtového okolí, aplikace gellaku, odstranění zrohovatělé kůže, péče pro okolí nehtů, hydratační výživa pokožky.)', 120, '/img/ilu-pedikura-gellak.svg', false],
   ['Pedikúra', 'Úprava nehtů + gellak (bez ošetření chodidel)', '(Dezinfekce, úprava nehtů a nehtového okolí, aplikace gellaku.)', 90, '/img/ilu-pedikura-gellak.svg', false],
   ['Pedikúra', 'COMBO Mani a Pedi', 'Manikúra a pedikúra při jednom sezení', 240, '/img/ilu-combo.svg', false],
 ];
