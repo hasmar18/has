@@ -60,7 +60,13 @@ test('SOUBĚŽNOST: 20 klientek najednou chce stejný termín → uspěje práv�
 test('SOUBĚŽNOST: částečně se překrývající termíny (10:00 vs 10:30) – jen jeden projde', async () => {
   const times = ['10:00', '10:30', '10:00', '10:30', '09:30', '10:00'];
   const results = await Promise.all(times.map((t, i) => new Client(server.url).post('/api/bookings', body({ starts_at: slotISO(WED(), t), email: `p${i}@example.cz` }))));
-  assert.equal(results.filter((r) => r.status === 200).length, 1);
+  const okIdx = results.map((r, i) => (r.status === 200 ? i : -1)).filter((i) => i >= 0);
+  assert.ok(okIdx.length >= 1, 'aspoň jedna rezervace projde');
+  // přijaté rezervace se nesmí překrývat (09:30 a 10:30 na sebe jen navazují – to je v pořádku)
+  const rows = (await query(`SELECT starts_at, ends_at FROM bookings WHERE status IN ('held','confirmed') ORDER BY starts_at`)).rows;
+  assert.equal(rows.length, okIdx.length);
+  for (let i = 1; i < rows.length; i += 1) assert.ok(rows[i].starts_at >= rows[i - 1].ends_at, 'žádný překryv');
+  for (const r of results.filter((x) => x.status !== 200)) assert.equal(r.status, 409);
 });
 
 test('SOUBĚŽNOST na úrovni databáze: omezení v PostgreSQL samo brání překryvu (i bez aplikační logiky)', async () => {
