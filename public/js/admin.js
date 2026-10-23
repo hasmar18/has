@@ -242,11 +242,20 @@ async function serviceForm(s, categories, done) {
   try { window.__gallery = (await api('/api/admin/gallery')).images.filter((g) => !g.is_logo); } catch { window.__gallery = []; }
   const f = h('form', {}, ...fld('Název', inp('s-n', s?.name || '', { required: true }), 's-n'), ...fld('Popis (zobrazí se v ceníku)', h('textarea', { id: 's-d' }, s?.description || ''), 's-d'),
     h('div', { class: 'f2' }, h('div', {}, ...fld('Délka (minuty)', inp('s-m', s?.duration_minutes || 60, { type: 'number', min: 5, max: 720 }), 's-m')), h('div', {}, ...fld('Cena (Kč)', inp('s-p', s?.price_czk ?? '', { type: 'number', min: 0 }), 's-p')),
-      h('div', {}, ...fld('Obrázek', sel('s-img', [['', '— výchozí ilustrace —'], ['/img/ilu-gellak.svg', 'Ilustrace: ruka – gellak'], ['/img/ilu-klasicka.svg', 'Ilustrace: ruka – klasická'], ['/img/ilu-pedikura.svg', 'Ilustrace: pedikúra'], ['/img/ilu-pedikura-gellak.svg', 'Ilustrace: pedikúra – gellak'], ['/img/ilu-combo.svg', 'Ilustrace: combo'], ...(s?.image_url && !/^\/img\/|^\/media\//.test(s.image_url) ? [[s.image_url, 'Aktuální ilustrační fotografie (Unsplash)']] : []), ...(window.__gallery || []).map((g) => [`/media/${g.id}`, `Fotka z galerie: ${g.alt || g.id.slice(0, 6)}`])], s?.image_url || ''), 's-img')),
+      h('div', {}, ...fld('Obrázek', sel('s-img', [['', '— výchozí ilustrace —'], ['/img/ilu-gellak.svg', 'Ilustrace: ruka – gellak'], ['/img/ilu-klasicka.svg', 'Ilustrace: ruka – klasická'], ['/img/ilu-pedikura.svg', 'Ilustrace: pedikúra'], ['/img/ilu-pedikura-gellak.svg', 'Ilustrace: pedikúra – gellak'], ['/img/ilu-combo.svg', 'Ilustrace: combo'], ...(s?.image_url && !/^\/img\/|^\/media\//.test(s.image_url) ? [[s.image_url, 'Aktuální ilustrační fotografie (Unsplash)']] : []), ...(window.__gallery || []).map((g) => [`/media/${g.id}`, `Fotka z galerie: ${g.alt || g.id.slice(0, 6)}`])], s?.image_url || ''), 's-img'), h('div', {}, ...fld('…nebo nahrát vlastní obrázek (JPEG/PNG/WebP, zmenší se automaticky)', h('input', { type: 'file', id: 's-file', accept: 'image/jpeg,image/png,image/webp' }), 's-file'))),
       h('div', {}, ...fld('Kategorie', sel('s-c', [['', '— bez kategorie —'], ...categories.map((c) => [c.id, c.name])], s?.category_id || ''), 's-c'))),
     chkbox('s-from', 'Cena „od“', s?.price_from), chkbox('s-a', 'Aktivní (nabízet při rezervaci)', s ? s.is_active : true), chkbox('s-v', 'Údaje ověřeny majitelkou', s?.is_verified), ...fld('Poznámka o zdroji údajů', inp('s-src', s?.source_note || ''), 's-src'));
   const save = guard(async () => {
-    const body = { name: $('#s-n', f).value, description: $('#s-d', f).value, duration_minutes: +$('#s-m', f).value, price_czk: $('#s-p', f).value === '' ? null : +$('#s-p', f).value, price_from: $('#s-from', f).checked, category_id: $('#s-c', f).value || null, image_url: $('#s-img', f).value || null, is_active: $('#s-a', f).checked, is_verified: $('#s-v', f).checked, source_note: $('#s-src', f).value || null };
+    let imageUrl = $('#s-img', f).value || null;
+    const up = $('#s-file', f).files[0];
+    if (up) {
+      const blob = await resizeImage(up, 1000);
+      const r = await fetch(`/api/admin/gallery?hidden=1&alt=${encodeURIComponent($('#s-n', f).value)}`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'image/jpeg', 'x-csrf-token': sessionStorage.getItem('csrf') || '' }, body: blob });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error?.message || 'Nahrání obrázku se nezdařilo.');
+      imageUrl = `/media/${j.id}`;
+    }
+    const body = { name: $('#s-n', f).value, description: $('#s-d', f).value, duration_minutes: +$('#s-m', f).value, price_czk: $('#s-p', f).value === '' ? null : +$('#s-p', f).value, price_from: $('#s-from', f).checked, category_id: $('#s-c', f).value || null, image_url: imageUrl, is_active: $('#s-a', f).checked, is_verified: $('#s-v', f).checked, source_note: $('#s-src', f).value || null };
     if (s) await api(`/api/admin/services/${s.id}`, { method: 'PATCH', body }); else await api('/api/admin/services', { method: 'POST', body });
     m.close(); toast('Uloženo'); done();
   });

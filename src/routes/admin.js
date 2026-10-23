@@ -358,7 +358,7 @@ export function mount(app) {
     const type = sniff(buf);
     if (!type) throw badRequest('Podporované formáty: JPEG, PNG, WebP.', 'bad_image');
     const alt = String(ctx.query.alt || '').slice(0, 200);
-    const r = (await query(`INSERT INTO gallery_images (content_type, data, alt, sort_order) VALUES ($1, $2, $3, COALESCE((SELECT min(sort_order) - 1 FROM gallery_images), 0)) RETURNING id`, [type, buf, alt])).rows[0];
+    const r = (await query(`INSERT INTO gallery_images (content_type, data, alt, is_visible, sort_order) VALUES ($1, $2, $3, $4, COALESCE((SELECT min(sort_order) - 1 FROM gallery_images), 0)) RETURNING id`, [type, buf, alt, ctx.query.hidden !== '1'])).rows[0];
     await audit({ query }, ctx.user.id, 'gallery.add', 'gallery_image', r.id);
     return { id: r.id };
   });
