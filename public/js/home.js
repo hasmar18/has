@@ -2,9 +2,9 @@ import { $, h, initPage, serviceCard, telHref, mapsDir, api } from './common.js'
 const boot = await initPage('/');
 if (boot) {
   const c = boot.content;
-  $('#hero-title').textContent = c.hero_title; $('#hero-sub').textContent = c.hero_subtitle;
-  $('#about-title').textContent = c.about_title; $('#about-text').textContent = c.about_text;
-  $('#svc-intro').textContent = c.services_intro;
+  $('#hero-title').textContent = c.hero_title; $('#hero-sub').textContent = c.hero_subtitle; $('#hero-sub').hidden = !c.hero_subtitle;
+  $('#about').hidden = !c.about_text; $('#about-title').textContent = c.about_title; $('#about-text').textContent = c.about_text;
+  $('#svc-intro').textContent = c.services_intro; $('#svc-intro').hidden = !c.services_intro;
   const box = $('#services'); box.replaceChildren();
   if (!boot.categories.length) box.append(h('p', { class: 'muted', text: 'Ceník bude brzy doplněn. Služby a ceny vám rádi sdělíme telefonicky.' }));
   for (const cat of boot.categories) box.append(h('h3', { class: 'cat-title', text: cat.name }), cat.services.map((s) => serviceCard(s, { href: `/rezervace?sluzba=${s.id}` })));
@@ -21,7 +21,8 @@ if (boot) {
   } else if (c.instagram_url) {
     $('#instagram').hidden = false; $('#ig-title').textContent = c.instagram_title; $('#ig-link').href = c.instagram_url;
   }
-  $('#info-title').textContent = c.client_info_title; $('#info-text').textContent = c.client_info_text; $('#cancel-text').textContent = c.cancellation_text;
+  $('#info').hidden = !(c.client_info_text || c.cancellation_text); $('#info-title').textContent = c.client_info_text ? c.client_info_title : ''; $('#info-text').textContent = c.client_info_text;
+  $('#cancel-card').hidden = !c.cancellation_text; $('#cancel-text').textContent = c.cancellation_text;
   $('#addr').textContent = `${c.contact_name}, ${c.contact_address}`;
   $('#tel').textContent = c.contact_phone; $('#tel').href = telHref(c.contact_phone); $('#call-btn').href = telHref(c.contact_phone);
   $('#nav-btn').href = mapsDir(c);
