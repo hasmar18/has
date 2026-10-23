@@ -23,7 +23,7 @@ const WD_LABEL = ['', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', '
 
 async function loadServices() {
   const rows = (await query(
-    `SELECT s.id, s.name, s.description, s.duration_minutes, s.price_czk, s.price_from, s.category_id,
+    `SELECT s.id, s.name, s.description, s.image_url, s.duration_minutes, s.price_czk, s.price_from, s.category_id,
             c.name AS category_name, c.sort_order AS cat_order
      FROM services s LEFT JOIN service_categories c ON c.id = s.category_id
      WHERE s.is_active AND s.archived_at IS NULL
@@ -33,29 +33,23 @@ async function loadServices() {
     const key = r.category_id || 'none';
     let c = cats.find((x) => x.id === key);
     if (!c) { c = { id: key, name: r.category_name || 'Služby', services: [] }; cats.push(c); }
-    c.services.push({ id: r.id, name: r.name, description: r.description, duration_minutes: r.duration_minutes, price_czk: r.price_czk, price_from: r.price_from });
+    c.services.push({ id: r.id, name: r.name, description: r.description, image_url: r.image_url, duration_minutes: r.duration_minutes, price_czk: r.price_czk, price_from: r.price_from });
   }
   return cats;
 }
 
 export function mount(app) {
   app.get('/api/public/bootstrap', async () => {
-    const [settings, content, categories, hours, gallery, ig] = await Promise.all([
+    const [settings, content, categories, logo, gallery, ig] = await Promise.all([
       getSettings(), getContent(), loadServices(),
-      query(`SELECT weekday, start_time::text AS s, end_time::text AS e FROM working_hours ORDER BY weekday, start_time`),
-      query(`SELECT id, alt, is_hero FROM gallery_images WHERE is_visible ORDER BY is_hero DESC, sort_order, created_at DESC`),
+      query(`SELECT id FROM gallery_images WHERE is_logo LIMIT 1`),
+      query(`SELECT id, alt, is_hero FROM gallery_images WHERE is_visible AND NOT is_logo ORDER BY is_hero DESC, sort_order, created_at DESC`),
       instagramConfigured(),
     ]);
-    const hoursByDay = [];
-    for (const r of hours.rows) {
-      let d = hoursByDay.find((x) => x.weekday === Number(r.weekday));
-      if (!d) { d = { weekday: Number(r.weekday), label: WD_LABEL[Number(r.weekday)], ranges: [] }; hoursByDay.push(d); }
-      d.ranges.push({ from: r.s.slice(0, 5), to: r.e.slice(0, 5) });
-    }
     return {
       content,
       categories,
-      hours: hoursByDay,
+      logo_id: logo.rows[0]?.id || null,
       gallery: gallery.rows,
       instagram: { configured: ig },
       booking: {

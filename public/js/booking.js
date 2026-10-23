@@ -1,4 +1,4 @@
-import { $, h, api, initPage, money, dur, dateCs, dateParts, WD, showErr, clear, setCsrf, telHref } from './common.js';
+import { $, h, api, initPage, serviceCard, money, dur, dateCs, dateParts, WD, showErr, clear, setCsrf, telHref } from './common.js';
 const boot = await initPage('/rezervace');
 const view = $('#view'); const msg = $('#msg');
 const st = { svc: null, day: null, slot: null, days: [], from: null, user: null, booking: null };
@@ -12,15 +12,15 @@ function renderServices() {
   if (!boot) return view.replaceChildren(h('div', { class: 'alert err', text: 'Obsah se nepodařilo načíst. Zkuste stránku obnovit.' }));
   if (!boot.booking.enabled) return view.replaceChildren(h('div', { class: 'alert info' }, 'Online rezervace zatím není spuštěna. Termín si prosím domluvte telefonicky.'), contactBox());
   if (!boot.categories.length) return view.replaceChildren(h('div', { class: 'alert info', text: 'Nabídka služeb se připravuje.' }), contactBox());
-  view.replaceChildren(h('h2', { text: 'Vyberte službu' }), boot.categories.map((c) => h('div', {}, h('h3', { text: c.name }), c.services.map((s) =>
-    h('button', { class: 'opt', type: 'button', onclick: () => { st.svc = s; st.day = null; st.slot = null; st.from = null; renderDates(); } },
-      h('div', { class: 'row sp' }, h('strong', { text: s.name }), h('span', { text: `${s.price_from ? 'od ' : ''}${money(s.price_czk)} · ${dur(s.duration_minutes)}` })),
-      s.description ? h('div', { class: 'small muted', text: s.description }) : '')))));
+  const pick = (s) => { st.svc = s; st.day = null; st.slot = null; st.from = null; renderDates(); };
+  view.replaceChildren(h('h2', { text: 'Vyberte službu' }), boot.categories.map((c) => [h('h3', { class: 'cat-title', text: c.name }), c.services.map((s) => serviceCard(s, { onclick: () => pick(s) }))]));
+  const pre = new URLSearchParams(location.search).get('sluzba');
+  if (pre && !st.preDone) { st.preDone = true; const s = boot.categories.flatMap((c) => c.services).find((x) => x.id === pre); if (s) pick(s); }
 }
 
 async function renderDates() {
   setStep(1); clear(msg);
-  view.replaceChildren(h('button', { class: 'btn ghost sm', type: 'button', onclick: renderServices }, '← Jiná služba'), h('h2', { text: `${st.svc.name}` }), h('p', { class: 'muted', text: `${dur(st.svc.duration_minutes)} · ${money(st.svc.price_czk)}` }), h('div', { id: 'avail' }, h('span', { class: 'spin' })));
+  view.replaceChildren(h('button', { class: 'btn ghost sm', type: 'button', onclick: renderServices }, '← Jiná služba'), h('h2', { text: `${st.svc.name}` }), h('p', { class: 'muted', text: [dur(st.svc.duration_minutes), st.svc.price_czk != null ? money(st.svc.price_czk) : ''].filter(Boolean).join(' · ') }), h('div', { id: 'avail' }, h('span', { class: 'spin' })));
   try {
     const q = new URLSearchParams({ service_id: st.svc.id }); if (st.from) q.set('from', st.from);
     const r = await api(`/api/public/availability?${q}`);
@@ -51,7 +51,7 @@ function drawDays(box) {
 }
 
 function summary() {
-  return h('dl', { class: 'summary card' }, h('dt', { text: 'Služba' }), h('dd', { text: st.svc.name }), h('dt', { text: 'Termín' }), h('dd', { text: `${dateCs(st.day)} v ${st.slot.time}` }), h('dt', { text: 'Délka a cena' }), h('dd', { text: `${dur(st.svc.duration_minutes)} · ${money(st.svc.price_czk)}` }));
+  return h('dl', { class: 'summary card' }, h('dt', { text: 'Služba' }), h('dd', { text: st.svc.name }), h('dt', { text: 'Termín' }), h('dd', { text: `${dateCs(st.day)} v ${st.slot.time}` }), h('dt', { text: 'Délka a cena' }), h('dd', { text: [dur(st.svc.duration_minutes), st.svc.price_czk != null ? money(st.svc.price_czk) : ''].filter(Boolean).join(' · ') }));
 }
 function renderDetails() {
   setStep(2); clear(msg);

@@ -29,25 +29,24 @@ export const CONTENT_DEFS = {
   contact_address: { label: 'Kontakt – adresa', multiline: false, def: 'U Studia 37, Ostrava-Zábřeh, 700 30' },
   contact_lat: { label: 'Mapa – zeměpisná šířka', multiline: false, def: '49.7981664' },
   contact_lng: { label: 'Mapa – zeměpisná délka', multiline: false, def: '18.233623' },
-  contact_hours_text: { label: 'Kontakt – poznámka k otevírací době', multiline: false, def: 'Termíny viz online rezervace.' },
   terms_text: {
     label: 'Obchodní podmínky', multiline: true,
     def: [
       'Obchodní podmínky rezervace služeb studia HASNAILS',
-      '1. Provozovatelem studia a poskytovatelem služeb je Martina Rolná, U Studia 37, Ostrava-Zábřeh, 700 30.',
+      '1. Provozovatelem studia a poskytovatelem služeb je Martina Rolná, IČO 24568902, se sídlem K nádraží 268, 747 66 Dolní Lhota, fyzická osoba podnikající podle živnostenského zákona (zapsaná v živnostenském rejstříku). Provozovna: HASNAILS, U Studia 37, Ostrava-Zábřeh, 700 30, telefon +420 702 118 870.',
       '2. Rezervace se stává závaznou potvrzením e-mailové adresy (případně přihlášením k účtu) a odesláním potvrzení rezervace na e-mail klientky.',
       '3. Cena a délka služby jsou uvedeny u každé služby v době rezervace. Konečná cena se může lišit podle skutečného rozsahu práce, na čemž se klientka a provozovatel dohodnou před zahájením služby.',
       '4. Rezervaci lze zrušit online nejpozději v době uvedené v storno podmínkách. Při pozdějším zrušení nebo nedostavení se kontaktujte prosím provozovatele telefonicky.',
       '5. Změnu termínu lze požádat online; změna je provedena až po potvrzení provozovatelem.',
       '6. Klientka je povinna dostavit se včas. Při výrazném zpoždění může být služba zkrácena nebo termín zrušen.',
-      '7. Tyto podmínky jsou výchozí šablonou a může je provozovatel kdykoli upravit v administraci.',
+      '7. Tyto podmínky jsou výchozí šablonou; provozovatel je může kdykoli upravit v administraci.',
     ].join('\n\n'),
   },
   privacy_text: {
     label: 'Zásady ochrany osobních údajů', multiline: true,
     def: [
       'Zásady zpracování osobních údajů',
-      'Správcem osobních údajů je Martina Rolná, U Studia 37, Ostrava-Zábřeh, 700 30, telefon +420 702 118 870.',
+      'Správcem osobních údajů je Martina Rolná, IČO 24568902, se sídlem K nádraží 268, 747 66 Dolní Lhota (provozovna: U Studia 37, Ostrava-Zábřeh, 700 30), telefon +420 702 118 870.',
       'Zpracováváme tyto údaje: jméno, e-mail, telefon, údaje o rezervaci (služba, termín, poznámka) a u registrovaných klientek přihlašovací e-mail a heslo (ukládáme pouze jeho bezpečný otisk).',
       'Účel a právní základ: vyřízení a evidence rezervace (plnění smlouvy / jednání o smlouvě, čl. 6 odst. 1 písm. b GDPR), zasílání potvrzení a připomínek k rezervaci (plnění smlouvy), zabezpečení a prevence zneužití (oprávněný zájem, čl. 6 odst. 1 písm. f GDPR).',
       'Příjemci údajů: poskytovatel hostingu a databáze (Render), poskytovatel e-mailových služeb (Brevo) a kalendářová služba používaná provozovatelem. Údaje nepředáváme dalším osobám za účelem marketingu.',

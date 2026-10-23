@@ -1,4 +1,4 @@
-import { $, h, api, initPage, showErr, clear, setCsrf, money, dur, telHref } from './common.js';
+import { $, h, api, initPage, showErr, clear, setCsrf, durPrice, telHref } from './common.js';
 const boot = await initPage('/ucet');
 const view = $('#view'); const msg = $('#msg');
 const url = new URL(location.href);
@@ -64,7 +64,7 @@ async function drawBookings(body) {
   try {
     const r = await api('/api/me/bookings');
     const card = (b, upcoming) => h('div', { class: 'bk' }, h('div', { class: 'row sp' }, h('strong', { text: b.service_name }), h('span', { class: `tag ${b.status === 'cancelled' ? 'cancelled' : ''}`, text: { confirmed: 'Potvrzeno', cancelled: 'Zrušeno', completed: 'Proběhlo', no_show: 'Nedostavila se' }[b.status] || b.status })),
-      h('div', { text: `${b.date_label} v ${b.local_time}` }), h('div', { class: 'small muted', text: `${dur(b.duration_minutes)} · ${money(b.price_czk)}` }),
+      h('div', { text: `${b.date_label} v ${b.local_time}` }), h('div', { class: 'small muted', text: durPrice(b.duration_minutes, b.price_czk) }),
       upcoming ? h('div', { class: 'row', style: false }, b.can_cancel ? h('button', { class: 'btn danger sm', onclick: async () => { if (!confirm('Opravdu zrušit rezervaci?')) return; try { await api(`/api/me/bookings/${b.id}/cancel`, { method: 'POST', body: {} }); info('Rezervace byla zrušena.'); drawBookings(body); } catch (e) { showErr(msg, e); } } }, 'Zrušit') : h('span', { class: 'small muted', text: `Zrušit online lze ${b.cancel_hours_before} h předem – zavolejte prosím do studia.` }),
         b.can_request_change ? h('button', { class: 'btn ghost sm', onclick: async () => { const m = prompt('Napište, kdy by vám vyhovoval jiný termín:'); if (!m || m.trim().length < 3) return; try { await api(`/api/me/bookings/${b.id}/reschedule-request`, { method: 'POST', body: { message: m } }); info('Žádost o změnu jsme odeslali.'); } catch (e) { showErr(msg, e); } } }, 'Požádat o změnu') : '') : '');
     body.replaceChildren(h('h2', { text: 'Nadcházející' }), r.upcoming.length ? r.upcoming.map((b) => card(b, true)) : h('p', { class: 'muted', text: 'Zatím nemáte žádnou nadcházející rezervaci.' }),

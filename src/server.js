@@ -2,7 +2,8 @@ import { config } from './config.js';
 import { migrate, closePool, query } from './db.js';
 import { log } from './lib/log.js';
 import { createApp } from './app.js';
-import { seedDefaults } from './services/seed.js';
+import { seedDefaults, seedServices } from './services/seed.js';
+import { loadOAuthCreds } from './services/oauthCreds.js';
 import { bootstrapAdmin } from './services/auth.js';
 import { registerProvider } from './calendar/providers.js';
 import { google } from './calendar/google.js';
@@ -22,6 +23,8 @@ async function main() {
   registerProvider(microsoft);
   await migrate();
   await seedDefaults();
+  await seedServices();
+  await loadOAuthCreds();
   await bootstrapAdmin();
 
   const app = createApp();

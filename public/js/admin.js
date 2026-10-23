@@ -53,7 +53,7 @@ function loginView(note) {
 }
 
 // ---------- kostra a router ----------
-const ROUTES = [['prehled', 'Přehled', dashboard], ['kalendar', 'Kalendář', calendarView], ['rezervace', 'Rezervace', bookingsView], ['sluzby', 'Služby', servicesView], ['doba', 'Pracovní doba', hoursView], ['galerie', 'Galerie', galleryView], ['obsah', 'Obsah webu', contentView], ['emaily', 'E-maily', emailsView], ['klientky', 'Klientky', clientsView], ['nastaveni', 'Nastavení', settingsView], ['protokol', 'Protokol změn', auditView]];
+const ROUTES = [['prehled', 'Přehled', dashboard], ['kalendar', 'Kalendář', calendarView], ['rezervace', 'Rezervace', bookingsView], ['sluzby', 'Služby', servicesView], ['doba', 'Doba rezervací', hoursView], ['galerie', 'Galerie', galleryView], ['obsah', 'Obsah webu', contentView], ['emaily', 'E-maily', emailsView], ['klientky', 'Klientky', clientsView], ['nastaveni', 'Nastavení', settingsView], ['protokol', 'Protokol změn', auditView]];
 let mainEl;
 function shell() {
   if (me.must_change_password) return forcePassword();
@@ -78,13 +78,14 @@ function route() {
 const page = (title, ...kids) => mainEl.replaceChildren(h('h1', { text: title }), ...kids);
 
 // ---------- Přehled ----------
+const OKL = { services: 'Služby zadány', prices: 'Ceny doplněny', hours: 'Dny a časy rezervací nastaveny', email: 'Odesílání e-mailů nastaveno', calendar: 'Kalendář propojen', calendar_write: 'Zápis do kalendáře nastaven', reviewed: 'Nastavení zkontrolováno', encryption: 'Šifrovací klíč nastaven', https: 'Adresa webu je https', enabled: 'Online rezervace zapnuty' };
 async function dashboard() {
   const d = await api('/api/admin/dashboard');
   const s = d.stats;
   page('Přehled',
     d.calendar.degraded ? h('div', { class: 'alert err', role: 'alert' }, h('strong', { text: 'Synchronizace kalendáře nefunguje. ' }), 'Online rezervace jsou bezpečně pozastaveny, dokud se spojení neobnoví. ', d.calendar.stale.map((x) => `${x.name}: ${x.last_error || x.status}`).join('; '), ' ', h('a', { href: '#/nastaveni' }, 'Otevřít nastavení kalendáře')) : '',
     h('div', { class: 'grid2' }, [['Rezervace příštích 7 dní', s.upcoming_week, '#/rezervace'], ['Žádosti o změnu termínu', s.open_requests, '#/rezervace'], ['Neodeslané e-maily (7 dní)', s.failed_emails, '#/emaily'], ['Rozdíly s kalendářem', s.calendar_drift, '#/kalendar']].map(([t, n, href]) => h('a', { class: 'stat', href, style: false }, h('b', { text: n }), t))),
-    h('div', { class: 'panel', style: false }, h('h2', { text: 'Kontrolní seznam spuštění' }), d.checklist.map((c) => h('div', { class: `chk ${c.ok ? 'ok' : c.optional ? 'opt' : 'bad'}` }, h('i', { text: c.ok ? '✔' : c.optional ? '○' : '✖' }), h('span', { text: c.ok ? c.label.replace(/^(Přidejte|Nastavte|Nakonfigurujte|Propojte|Vyberte|Zkontrolujte|Zapněte)/, (m) => m) : c.label })))),
+    h('div', { class: 'panel', style: false }, h('h2', { text: 'Kontrolní seznam spuštění' }), d.checklist.map((c) => h('div', { class: `chk ${c.ok ? 'ok' : c.optional ? 'opt' : 'bad'}` }, h('i', { text: c.ok ? '✔' : c.optional ? '○' : '✖' }), h('span', { text: c.ok ? (OKL[c.key] || 'Hotovo') : c.label })))),
     h('p', { class: 'small muted', text: d.online_booking_enabled ? 'Online rezervace jsou zapnuté.' : 'Online rezervace jsou VYPNUTÉ – veřejnost si zatím termín neobjedná.' }));
 }
 
@@ -237,13 +238,15 @@ async function servicesView() {
   });
   await draw();
 }
-function serviceForm(s, categories, done) {
+async function serviceForm(s, categories, done) {
+  try { window.__gallery = (await api('/api/admin/gallery')).images.filter((g) => !g.is_logo); } catch { window.__gallery = []; }
   const f = h('form', {}, ...fld('Název', inp('s-n', s?.name || '', { required: true }), 's-n'), ...fld('Popis (zobrazí se v ceníku)', h('textarea', { id: 's-d' }, s?.description || ''), 's-d'),
     h('div', { class: 'f2' }, h('div', {}, ...fld('Délka (minuty)', inp('s-m', s?.duration_minutes || 60, { type: 'number', min: 5, max: 720 }), 's-m')), h('div', {}, ...fld('Cena (Kč)', inp('s-p', s?.price_czk ?? '', { type: 'number', min: 0 }), 's-p')),
+      h('div', {}, ...fld('Obrázek', sel('s-img', [['', '— výchozí ilustrace —'], ['/img/ilu-gellak.svg', 'Ilustrace: ruka – gellak'], ['/img/ilu-klasicka.svg', 'Ilustrace: ruka – klasická'], ['/img/ilu-pedikura.svg', 'Ilustrace: pedikúra'], ['/img/ilu-pedikura-gellak.svg', 'Ilustrace: pedikúra – gellak'], ['/img/ilu-combo.svg', 'Ilustrace: combo'], ...(window.__gallery || []).map((g) => [`/media/${g.id}`, `Fotka z galerie: ${g.alt || g.id.slice(0, 6)}`])], s?.image_url || ''), 's-img')),
       h('div', {}, ...fld('Kategorie', sel('s-c', [['', '— bez kategorie —'], ...categories.map((c) => [c.id, c.name])], s?.category_id || ''), 's-c'))),
     chkbox('s-from', 'Cena „od“', s?.price_from), chkbox('s-a', 'Aktivní (nabízet při rezervaci)', s ? s.is_active : true), chkbox('s-v', 'Údaje ověřeny majitelkou', s?.is_verified), ...fld('Poznámka o zdroji údajů', inp('s-src', s?.source_note || ''), 's-src'));
   const save = guard(async () => {
-    const body = { name: $('#s-n', f).value, description: $('#s-d', f).value, duration_minutes: +$('#s-m', f).value, price_czk: $('#s-p', f).value === '' ? null : +$('#s-p', f).value, price_from: $('#s-from', f).checked, category_id: $('#s-c', f).value || null, is_active: $('#s-a', f).checked, is_verified: $('#s-v', f).checked, source_note: $('#s-src', f).value || null };
+    const body = { name: $('#s-n', f).value, description: $('#s-d', f).value, duration_minutes: +$('#s-m', f).value, price_czk: $('#s-p', f).value === '' ? null : +$('#s-p', f).value, price_from: $('#s-from', f).checked, category_id: $('#s-c', f).value || null, image_url: $('#s-img', f).value || null, is_active: $('#s-a', f).checked, is_verified: $('#s-v', f).checked, source_note: $('#s-src', f).value || null };
     if (s) await api(`/api/admin/services/${s.id}`, { method: 'PATCH', body }); else await api('/api/admin/services', { method: 'POST', body });
     m.close(); toast('Uloženo'); done();
   });
@@ -259,12 +262,12 @@ async function hoursView() {
     const dayBox = h('div', {});
     const redraw = () => dayBox.replaceChildren(...WDN.map((n, i) => { const d = i + 1;
       return h('div', { class: 'panel' }, h('div', { class: 'row sp' }, h('strong', { text: n }), h('button', { class: 'btn ghost xs', onclick: () => { st[d].push({ weekday: d, start: st[d].length ? st[d].at(-1).end : '09:00', end: st[d].length ? '18:00' : '17:00' }); redraw(); } }, '+ Úsek')),
-        st[d].length ? st[d].map((r, k) => h('div', { class: 'row' }, h('input', { type: 'time', value: r.start, 'aria-label': `${n} od`, style: false, onchange: (e) => { r.start = e.target.value; } }), '–', h('input', { type: 'time', value: r.end, 'aria-label': `${n} do`, onchange: (e) => { r.end = e.target.value; } }), h('button', { class: 'btn ghost xs', onclick: () => { st[d].splice(k, 1); redraw(); } }, 'Odebrat'))) : h('p', { class: 'muted small', text: 'Zavřeno. Více úseků v jednom dni vytvoří pauzu mezi nimi (např. 9–12 a 13–17).' })); }));
+        st[d].length ? st[d].map((r, k) => h('div', { class: 'row' }, h('input', { type: 'time', value: r.start, 'aria-label': `${n} od`, style: false, onchange: (e) => { r.start = e.target.value; } }), '–', h('input', { type: 'time', value: r.end, 'aria-label': `${n} do`, onchange: (e) => { r.end = e.target.value; } }), h('button', { class: 'btn ghost xs', onclick: () => { st[d].splice(k, 1); redraw(); } }, 'Odebrat'))) : h('p', { class: 'muted small', text: 'Zavřeno. Neaktivní den = nelze rezervovat. Více úseků v jednom dni vytvoří pauzu mezi nimi (např. 9–12 a 13–17).' })); }));
     redraw();
-    page('Pracovní doba',
-      h('p', { class: 'muted', text: 'Online lze rezervovat jen v těchto hodinách. Pracovní dobu nikdo nepředvyplnil – nastavte ji podle skutečnosti.' }), dayBox,
-      h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/hours', { method: 'PUT', body: { hours: Object.values(st).flat().map((x) => ({ weekday: x.weekday, start: x.start, end: x.end })) } }); toast('Pracovní doba uložena'); }) }, 'Uložit pracovní dobu')),
-      h('div', { class: 'panel' }, h('h2', { text: 'Dovolená, svátky a mimořádné hodiny' }), h('div', { class: 'bar' }, h('button', { class: 'btn sm', onclick: () => exceptionForm('closed', draw) }, '+ Zavřeno (dovolená, svátek)'), h('button', { class: 'btn ghost sm', onclick: () => exceptionForm('open', draw) }, '+ Mimořádné hodiny')),
+    page('Doba rezervací',
+      h('p', { class: 'muted', text: 'Zde nastavte, které dny a v jakých hodinách mohou klientky zadávat rezervace. Nikde na webu se nezobrazuje. Počáteční časy se nabízejí tak, aby služba skončila nejpozději na konci úseku.' }), dayBox,
+      h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/hours', { method: 'PUT', body: { hours: Object.values(st).flat().map((x) => ({ weekday: x.weekday, start: x.start, end: x.end })) } }); toast('Uloženo'); }) }, 'Uložit dny a časy')),
+      h('div', { class: 'panel' }, h('h2', { text: 'Dovolená, volno a mimořádné termíny' }), h('div', { class: 'bar' }, h('button', { class: 'btn sm', onclick: () => exceptionForm('closed', draw) }, '+ Zavřeno (dovolená, svátek)'), h('button', { class: 'btn ghost sm', onclick: () => exceptionForm('open', draw) }, '+ Mimořádné hodiny')),
         exceptions.length ? h('table', { class: 'tbl' }, h('tbody', {}, exceptions.map((x) => h('tr', {}, h('td', { text: x.date_from === x.date_to ? x.date_from : `${x.date_from} – ${x.date_to}` }), h('td', { text: x.kind === 'closed' ? 'Zavřeno' : `Otevřeno ${x.start}–${x.end}` }), h('td', { text: x.note || '' }), h('td', {}, h('button', { class: 'btn ghost xs', onclick: guard(async () => { await api(`/api/admin/exceptions/${x.id}`, { method: 'DELETE' }); draw(); }) }, 'Smazat')))))) : h('p', { class: 'muted small', text: 'Žádné výjimky.' })));
   });
   await draw();
@@ -289,7 +292,7 @@ async function galleryView() {
   const draw = guard(async () => {
     const { images } = await api('/api/admin/gallery');
     const file = h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true, 'aria-label': 'Vybrat fotografie' });
-    page('Galerie', h('p', { class: 'muted', text: 'Nahrajte vlastní fotografie. Zmenšují se automaticky. Fotografie z cizích zdrojů (např. Instagramu) nahrávejte jen se svolením autora.' }),
+    page('Galerie', h('p', { class: 'muted', text: 'Nahrajte vlastní fotografie. Zmenšují se automaticky. Logo: nahrajte profilovou fotku z Instagramu a u fotky zvolte „Použít jako logo“ (do galerie na webu se pak nezobrazí). Fotografie z cizích zdrojů (např. Instagramu) nahrávejte jen se svolením autora.' }),
       h('div', { class: 'bar' }, file, h('button', { class: 'btn sm', onclick: guard(async () => {
         for (const f of file.files) { const blob = await resizeImage(f); const alt = prompt(`Popis fotografie ${f.name} (pro nevidomé, nepovinné):`, '') || '';
           const r = await fetch(`/api/admin/gallery?alt=${encodeURIComponent(alt)}`, { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'image/jpeg', 'x-csrf-token': sessionStorage.getItem('csrf') || '' }, body: blob });
@@ -297,6 +300,7 @@ async function galleryView() {
         toast('Nahráno'); draw(); }) }, 'Nahrát')),
       images.length ? h('div', { class: 'thumbs' }, images.map((i) => h('div', { class: 't' }, h('img', { src: `/media/${i.id}`, alt: i.alt || '' }), h('div', { class: 'small', text: i.alt || '(bez popisu)' }),
         h('div', { class: 'row' }, h('button', { class: 'btn ghost xs', onclick: guard(async () => { await api(`/api/admin/gallery/${i.id}`, { method: 'PATCH', body: { is_visible: !i.is_visible } }); draw(); }) }, i.is_visible ? 'Skrýt' : 'Zobrazit'),
+          h('button', { class: 'btn ghost xs', onclick: guard(async () => { await api(`/api/admin/gallery/${i.id}`, { method: 'PATCH', body: { is_logo: !i.is_logo } }); toast(i.is_logo ? 'Logo odebráno' : 'Nastaveno jako logo'); draw(); }) }, i.is_logo ? '★ Je logo (zrušit)' : 'Použít jako logo'),
           h('button', { class: 'btn ghost xs', onclick: guard(async () => { const a = prompt('Popis:', i.alt || ''); if (a === null) return; await api(`/api/admin/gallery/${i.id}`, { method: 'PATCH', body: { alt: a } }); draw(); }) }, 'Popis'),
           h('button', { class: 'btn ghost xs', onclick: guard(async () => { if (!confirm('Smazat fotografii?')) return; await api(`/api/admin/gallery/${i.id}`, { method: 'DELETE' }); draw(); }) }, 'Smazat'))))) : h('p', { class: 'muted', text: 'Galerie je prázdná.' }));
   });
@@ -355,13 +359,35 @@ async function settingsView(qs) {
 }
 function calendarPanel(cc) {
   const reload = () => settingsView();
-  const providers = cc.providers;
+  const g = cc.providers.find((p) => p.name === 'google'); const ms = cc.providers.find((p) => p.name === 'microsoft');
+  const googleHas = cc.connections.some((c) => c.provider === 'google');
+  const wizard = h('div', { id: 'g-wizard' });
+  const drawWizard = async () => {
+    const o = await api('/api/admin/calendar-oauth');
+    const done = o.google.configured;
+    wizard.replaceChildren(
+      h('div', { class: 'row sp' }, h('strong', { text: 'Google Kalendář' }), done ? h('span', { class: 'pill good', text: 'připraveno k propojení' }) : h('span', { class: 'pill warn', text: 'vyžaduje jednorázové nastavení' })),
+      done ? '' : h('div', {},
+        h('p', { class: 'small', text: 'Google nedovoluje propojit kalendář bez vlastní „aplikace“ – její vytvoření je zdarma a stačí ho udělat jednou (cca 10 minut):' }),
+        h('ol', { class: 'small' },
+          h('li', {}, 'Otevřete ', h('a', { href: 'https://console.cloud.google.com/projectcreate', target: '_blank', rel: 'noopener' }, 'Google Cloud Console → nový projekt'), ' a vytvořte projekt (název libovolný).'),
+          h('li', {}, 'Zapněte ', h('a', { href: 'https://console.cloud.google.com/apis/library/calendar-json.googleapis.com', target: '_blank', rel: 'noopener' }, 'Google Calendar API'), ' (tlačítko Enable).'),
+          h('li', {}, 'V ', h('a', { href: 'https://console.cloud.google.com/auth/overview', target: '_blank', rel: 'noopener' }, 'Google Auth platform'), ' nastavte název aplikace, váš e-mail, typ „External“, přidejte scope pro Kalendář a ', h('strong', { text: 'aplikaci publikujte do produkce (Publish app)' }), ' – jinak přístup po 7 dnech vyprší.'),
+          h('li', {}, 'V ', h('a', { href: 'https://console.cloud.google.com/auth/clients', target: '_blank', rel: 'noopener' }, 'Clients'), ' vytvořte „OAuth client ID“ typu Web application a jako Authorized redirect URI zadejte přesně: ', h('code', { text: o.redirect_uris.google })),
+          h('li', {}, 'Zkopírujte Client ID a Client secret sem:')),
+        h('div', { class: 'f2' }, h('div', {}, ...fld('Client ID', inp('g-id', '', { autocomplete: 'off' }), 'g-id')), h('div', {}, ...fld('Client secret', inp('g-secret', '', { type: 'password', autocomplete: 'off' }), 'g-secret'))),
+        h('p', {}, h('button', { class: 'btn sm', onclick: guard(async () => { await api('/api/admin/calendar-oauth/google', { method: 'PUT', body: { client_id: $('#g-id').value, client_secret: $('#g-secret').value } }); toast('Uloženo'); reload(); }) }, 'Uložit'))),
+      done ? h('div', { class: 'row' }, h('button', { class: 'btn', onclick: guard(async () => { const r = await api('/api/admin/calendar/connect', { method: 'POST', body: { provider: 'google' } }); location.href = r.url; }) }, googleHas ? 'Propojit další Google účet' : 'Propojit Google Kalendář'),
+        o.google.source === 'admin' ? h('button', { class: 'btn ghost sm', onclick: guard(async () => { if (!confirm('Smazat uložené údaje aplikace? Již propojené kalendáře přestanou fungovat.')) return; await api('/api/admin/calendar-oauth/google', { method: 'PUT', body: { client_id: '', client_secret: '' } }); reload(); }) }, 'Změnit údaje aplikace') : h('span', { class: 'small muted', text: 'Údaje jsou nastaveny na serveru.' })) : '');
+  };
+  drawWizard().catch(fail);
   return h('div', { class: 'panel' }, h('h2', { text: 'Kalendář' }),
-    h('p', { class: 'muted small', text: 'Propojením se osobní události v kalendáři stanou blokacemi termínů (klientky se o nich nedozví) a nové rezervace se do vybraného kalendáře zapíší. Změny v kalendáři se načítají každé 2 minuty (nebo okamžitě, pokud je dostupné push upozornění).' }),
-    h('div', { class: 'bar' }, providers.map((p) => h('button', { class: 'btn sm', disabled: !p.configured, title: p.configured ? '' : `Na serveru chybí: ${p.env_hint}`, onclick: guard(async () => { const r = await api('/api/admin/calendar/connect', { method: 'POST', body: { provider: p.name } }); location.href = r.url; }) }, `Propojit ${p.label}`)), h('span', { class: 'small muted', text: providers.some((p) => !p.configured) ? 'Šedé tlačítko = poskytovatel není na serveru nakonfigurován (viz README).' : '' })),
-    h('p', { class: 'small muted' }, 'Redirect URI pro nastavení aplikace u poskytovatele: ', Object.entries(cc.redirect_uris).map(([n, u]) => h('code', { text: `${n}: ${u}  ` }))),
+    h('p', { class: 'muted small', text: 'Propojením se osobní události v kalendáři stanou blokacemi termínů (klientky se o nich nedozví) a nové rezervace se do vybraného kalendáře zapíší. Změny se načítají každé 2 minuty.' }),
+    wizard,
+    ms && ms.configured ? h('div', { class: 'bar' }, h('button', { class: 'btn ghost sm', onclick: guard(async () => { const r = await api('/api/admin/calendar/connect', { method: 'POST', body: { provider: 'microsoft' } }); location.href = r.url; }) }, 'Propojit Outlook / Microsoft 365')) : h('p', { class: 'small muted', text: 'Outlook / Microsoft 365: dostupné po nastavení MS_CLIENT_ID a MS_CLIENT_SECRET na serveru (viz README).' }),
     cc.unsupported.map((u) => h('p', { class: 'small muted' }, h('strong', { text: `${u.label}: ` }), u.reason)),
-    cc.connections.length ? cc.connections.map((c) => connectionBox(c, reload)) : h('p', { class: 'muted', text: 'Žádný kalendář není propojen.' }));
+    cc.connections.length ? h('h3', { text: 'Propojené kalendáře' }) : h('p', { class: 'muted', text: 'Žádný kalendář zatím není propojen.' }),
+    cc.connections.map((c) => connectionBox(c, reload)));
 }
 function connectionBox(c, reload) {
   const stateTxt = { active: ['aktivní', 'good'], error: ['chyba synchronizace', 'bad'], needs_reauth: ['vyžaduje znovu přihlášení', 'bad'] }[c.status] || [c.status, 'warn'];

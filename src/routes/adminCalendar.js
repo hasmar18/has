@@ -1,3 +1,4 @@
+import { setOAuthCreds, oauthStatus } from '../services/oauthCreds.js';
 import { z } from 'zod';
 import { query, withTx } from '../db.js';
 import { config } from '../config.js';
@@ -41,6 +42,17 @@ export function mount(app) {
     redirect_uris: Object.fromEntries(['google', 'microsoft'].map((n) => [n, redirectUriFor(n)])),
     unsupported: [{ name: 'apple', label: 'Apple Kalendář / iCloud', reason: 'Apple nenabízí OAuth ani push notifikace pro iCloud kalendář. Spolehlivá obousměrná synchronizace není bezpečně možná – doporučujeme používat Google nebo Outlook kalendář (lze do něj přidat i iCloud událost přes sdílení).' }],
   }));
+
+  app.get('/api/admin/calendar-oauth', A, async () => ({ google: oauthStatus('google'), microsoft: oauthStatus('microsoft'), redirect_uris: { google: redirectUriFor('google'), microsoft: redirectUriFor('microsoft') } }));
+  app.put('/api/admin/calendar-oauth/:provider', A, async (ctx) => {
+    if (!['google', 'microsoft'].includes(ctx.params.provider)) throw notFound();
+    const b = z.object({ client_id: z.string().trim().max(300), client_secret: z.string().trim().max(300) }).parse(await ctx.json());
+    if (Boolean(b.client_id) !== Boolean(b.client_secret)) throw badRequest('Vyplňte Client ID i Client secret.');
+    try { await setOAuthCreds(ctx.params.provider, { clientId: b.client_id, clientSecret: b.client_secret }); }
+    catch (e) { if (e.status === 400) throw badRequest(e.message); throw e; }
+    await audit({ query }, ctx.user.id, 'calendar.oauth_credentials', 'oauth', ctx.params.provider, { set: Boolean(b.client_id) });
+    return oauthStatus(ctx.params.provider);
+  });
 
   app.post('/api/admin/calendar/connect', A, async (ctx) => {
     const { provider } = z.object({ provider: z.string().max(30) }).parse(await ctx.json());

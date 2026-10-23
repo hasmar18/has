@@ -31,6 +31,7 @@ export async function api(path, { method = 'GET', body } = {}) {
 export const setCsrf = (t) => { csrf = t; try { sessionStorage.setItem('csrf', t || ''); } catch {} };
 try { csrf = sessionStorage.getItem('csrf') || null; } catch {}
 export const money = (n) => (n == null ? '' : `${Number(n).toLocaleString('cs-CZ')} Kč`);
+export const durPrice = (m, p) => [dur(m), p != null ? money(p) : ''].filter(Boolean).join(' · ');
 export const dur = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${m} min`);
 export const WD = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne'];
 export function dateParts(iso) { const [y, m, d] = iso.split('-').map(Number); const dt = new Date(Date.UTC(y, m - 1, d)); return { y, m, d, wd: (dt.getUTCDay() + 6) % 7 }; }
@@ -42,14 +43,15 @@ export const bootstrap = () => (bootP ||= api('/api/public/bootstrap'));
 const LOGO = '<svg viewBox="0 0 22 28" aria-hidden="true"><path d="M3 27V10C3 4.5 6.5 1 11 1s8 3.5 8 9v17z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 27V11c0-3 1.7-5 4-5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/></svg>';
 const NAV = [['/', 'Úvod'], ['/#sluzby', 'Služby'], ['/#galerie', 'Galerie'], ['/kontakt', 'Kontakt'], ['/ucet', 'Můj účet']];
 
-export function chrome(active, content) {
+export function chrome(active, content, logoId) {
   const hdr = h('header', { class: 'site' }, h('div', { class: 'wrap' },
     h('a', { class: 'logo', href: '/', 'aria-label': 'HASNAILS – úvodní stránka' }),
     h('button', { class: 'menu-btn', 'aria-expanded': 'false', 'aria-controls': 'mainnav', onclick: (e) => { const n = $('#mainnav'); const o = n.classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', o); } }, 'Menu'),
     h('nav', { class: 'main', id: 'mainnav', 'aria-label': 'Hlavní navigace' },
       NAV.map(([href, t]) => h('a', { href, ...(href === active ? { 'aria-current': 'page' } : {}) }, t)),
       h('a', { class: 'btn sm', href: '/rezervace' }, 'Rezervovat'))));
-  $('.logo', hdr).innerHTML = `${LOGO}<span>HASNAILS</span>`;
+  $('.logo', hdr).innerHTML = logoId ? '<img class="logo-img" alt="" width="36" height="36"><span>HASNAILS</span>' : `${LOGO}<span>HASNAILS</span>`;
+  if (logoId) $('.logo-img', hdr).src = `/media/${logoId}`;
   const c = content || {};
   const ftr = h('footer', { class: 'site' }, h('div', { class: 'wrap' }, h('div', { class: 'cols' },
     h('div', {}, h('strong', { text: 'HASNAILS' }), h('p', { class: 'small', text: c.contact_name || '' }), h('p', { class: 'small', text: c.contact_address || '' })),
@@ -63,8 +65,16 @@ export function chrome(active, content) {
 export async function initPage(active) {
   let boot = null;
   try { boot = await bootstrap(); } catch { /* stránka funguje i bez dat */ }
-  chrome(active, boot?.content);
+  chrome(active, boot?.content, boot?.logo_id);
   return boot;
+}
+export function serviceCard(s, { onclick, href } = {}) {
+  const plus = href ? h('a', { class: 'plus', href, 'aria-label': `Rezervovat: ${s.name}` }, '+') : h('button', { class: 'plus', type: 'button', onclick, 'aria-label': `Vybrat: ${s.name}` }, '+');
+  return h('div', { class: 'svc-card' },
+    h('img', { class: 'svc-img', src: s.image_url || '/img/ilu-klasicka.svg', alt: '', loading: 'lazy', width: 96, height: 96 }),
+    h('div', { class: 'svc-body' }, h('h4', { text: s.name }), s.description ? h('p', { class: 'svc-desc', text: s.description }) : '',
+      h('div', { class: 'svc-meta' }, h('span', { text: dur(s.duration_minutes) }), s.price_czk != null ? h('strong', { text: `${s.price_from ? 'od ' : ''}${money(s.price_czk)}` }) : '')),
+    plus);
 }
 export const showErr = (box, e) => { box.replaceChildren(h('div', { class: 'alert err', role: 'alert', text: e.message || String(e) })); box.hidden = false; box.scrollIntoView({ block: 'nearest' }); };
 export const clear = (el) => { el.replaceChildren(); el.hidden = true; };

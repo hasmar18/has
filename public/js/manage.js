@@ -1,4 +1,4 @@
-import { $, h, api, initPage, showErr, clear, money, dur, telHref } from './common.js';
+import { $, h, api, initPage, showErr, clear, durPrice, telHref } from './common.js';
 const boot = await initPage('');
 const view = $('#view'); const msg = $('#msg');
 const token = new URL(location.href).searchParams.get('token');
@@ -13,7 +13,7 @@ function draw(b, c) {
   const cancelled = b.status === 'cancelled';
   view.replaceChildren(
     h('div', { class: 'card' }, h('span', { class: `tag ${cancelled ? 'cancelled' : ''}`, text: cancelled ? 'Zrušeno' : b.status === 'confirmed' ? 'Potvrzeno' : b.status }),
-      h('h2', { text: b.service_name }), h('p', { text: `${b.date_label} v ${b.local_time}` }), h('p', { class: 'muted', text: `${dur(b.duration_minutes)} · ${money(b.price_czk)}` }),
+      h('h2', { text: b.service_name }), h('p', { text: `${b.date_label} v ${b.local_time}` }), h('p', { class: 'muted', text: durPrice(b.duration_minutes, b.price_czk) }),
       h('p', { class: 'small', text: `${boot?.content.contact_name || ''}, ${boot?.content.contact_address || ''}` })),
     cancelled ? h('p', { class: 'muted', text: 'Tato rezervace byla zrušena.' }) : h('div', {},
       b.can_cancel ? h('button', { class: 'btn danger', onclick: cancel }, 'Zrušit rezervaci') : h('p', { class: 'alert info', text: `Online zrušení je možné nejpozději ${b.cancel_hours_before} hodin před termínem. Zavolejte prosím do studia.` }),

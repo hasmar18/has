@@ -34,8 +34,9 @@ export function mount(app) {
   app.get('/api/admin/dashboard', A, async () => {
     const settings = await getSettings();
     const now = new Date();
-    const [svc, hours, upcoming, requests, failedEmails, failedJobs, health, drift, conn, ig] = await Promise.all([
+    const [svc, noPrice, hours, upcoming, requests, failedEmails, failedJobs, health, drift, conn, ig] = await Promise.all([
       query(`SELECT count(*)::int AS n FROM services WHERE is_active AND archived_at IS NULL`),
+      query(`SELECT count(*)::int AS n FROM services WHERE is_active AND archived_at IS NULL AND price_czk IS NULL`),
       query(`SELECT count(*)::int AS n FROM working_hours`),
       query(`SELECT count(*)::int AS n FROM bookings WHERE status = 'confirmed' AND starts_at BETWEEN now() AND now() + interval '7 days'`),
       query(`SELECT count(*)::int AS n FROM reschedule_requests WHERE status = 'open'`),
@@ -49,7 +50,8 @@ export function mount(app) {
     const emailOk = emailProviderConfigured();
     const checklist = [
       { key: 'services', ok: svc.rows[0].n > 0, label: 'Přidejte alespoň jednu službu (Služby).' },
-      { key: 'hours', ok: hours.rows[0].n > 0, label: 'Nastavte pracovní dobu (Pracovní doba).' },
+      { key: 'prices', ok: noPrice.rows[0].n === 0, label: `Doplňte ceny u služeb (${noPrice.rows[0].n} bez ceny) – Služby.` },
+      { key: 'hours', ok: hours.rows[0].n > 0, label: 'Nastavte dny a časy, kdy lze zadávat rezervace (Doba rezervací).' },
       { key: 'email', ok: emailOk, label: 'Nakonfigurujte odesílání e-mailů – proměnné BREVO_API_KEY a MAIL_FROM_EMAIL v prostředí Renderu.' },
       { key: 'calendar', ok: conn.rows[0].total > 0, label: 'Propojte kalendář (Nastavení → Kalendář).', optional: true },
       { key: 'calendar_write', ok: Number(conn.rows[0].writers) > 0 || conn.rows[0].total === 0, label: 'Vyberte kalendář, do kterého se zapisují rezervace.', optional: true },
@@ -282,6 +284,7 @@ export function mount(app) {
     name: z.string().trim().min(2).max(120), description: z.string().trim().max(2000).default(''),
     duration_minutes: z.number().int().min(5).max(720), price_czk: z.number().int().min(0).max(1_000_000).nullable().default(null),
     price_from: z.boolean().default(false), category_id: uuid.nullable().default(null), is_active: z.boolean().default(true),
+    image_url: z.string().trim().max(200).regex(/^\/(img|media)\/[A-Za-z0-9._-]+$/, 'Neplatný obrázek.').nullable().default(null),
     is_verified: z.boolean().default(false), source_note: z.string().trim().max(300).nullable().default(null), sort_order: z.number().int().default(0),
   });
 
@@ -295,9 +298,9 @@ export function mount(app) {
   app.post('/api/admin/services', A, async (ctx) => {
     const b = serviceBody.parse(await ctx.json());
     const r = (await query(
-      `INSERT INTO services (name, description, duration_minutes, price_czk, price_from, category_id, is_active, is_verified, source_note, sort_order)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-      [b.name, b.description, b.duration_minutes, b.price_czk, b.price_from, b.category_id, b.is_active, b.is_verified, b.source_note, b.sort_order])).rows[0];
+      `INSERT INTO services (name, description, duration_minutes, price_czk, price_from, category_id, is_active, is_verified, source_note, sort_order, image_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+      [b.name, b.description, b.duration_minutes, b.price_czk, b.price_from, b.category_id, b.is_active, b.is_verified, b.source_note, b.sort_order, b.image_url])).rows[0];
     await audit({ query }, ctx.user.id, 'service.create', 'service', r.id, { name: b.name });
     return { service: r };
   });
@@ -349,7 +352,7 @@ export function mount(app) {
     if (buf.length > 12 && buf.subarray(0, 4).toString() === 'RIFF' && buf.subarray(8, 12).toString() === 'WEBP') return 'image/webp';
     return null;
   };
-  app.get('/api/admin/gallery', A, async () => ({ images: (await query(`SELECT id, alt, sort_order, is_hero, is_visible, created_at, octet_length(data) AS bytes FROM gallery_images ORDER BY is_hero DESC, sort_order, created_at DESC`)).rows }));
+  app.get('/api/admin/gallery', A, async () => ({ images: (await query(`SELECT id, alt, sort_order, is_hero, is_visible, is_logo, created_at, octet_length(data) AS bytes FROM gallery_images ORDER BY is_hero DESC, sort_order, created_at DESC`)).rows }));
   app.post('/api/admin/gallery', A, async (ctx) => {
     const buf = await ctx.buffer(6_000_000);
     const type = sniff(buf);
@@ -361,11 +364,14 @@ export function mount(app) {
   });
   app.patch('/api/admin/gallery/:id', A, async (ctx) => {
     if (!uuid.safeParse(ctx.params.id).success) throw notFound();
-    const b = z.object({ alt: z.string().trim().max(200).optional(), is_hero: z.boolean().optional(), is_visible: z.boolean().optional(), sort_order: z.number().int().optional() }).parse(await ctx.json());
+    const b = z.object({ alt: z.string().trim().max(200).optional(), is_hero: z.boolean().optional(), is_visible: z.boolean().optional(), is_logo: z.boolean().optional(), sort_order: z.number().int().optional() }).parse(await ctx.json());
     await withTx(async (tx) => {
       if (b.is_hero) await tx.query(`UPDATE gallery_images SET is_hero = false`);
-      await tx.query(`UPDATE gallery_images SET alt = COALESCE($2, alt), is_hero = COALESCE($3, is_hero), is_visible = COALESCE($4, is_visible), sort_order = COALESCE($5, sort_order) WHERE id = $1`,
-        [ctx.params.id, b.alt ?? null, b.is_hero ?? null, b.is_visible ?? null, b.sort_order ?? null]);
+      if (b.is_logo) await tx.query(`UPDATE gallery_images SET is_logo = false WHERE id <> $1`, [ctx.params.id]);
+      if (b.is_logo === false) await tx.query(`UPDATE gallery_images SET is_logo = false WHERE id = $1`, [ctx.params.id]);
+      await tx.query(`UPDATE gallery_images SET alt = COALESCE($2, alt), is_hero = COALESCE($3, is_hero), is_visible = COALESCE($4, is_visible), sort_order = COALESCE($5, sort_order),
+         is_logo = COALESCE($6, is_logo) WHERE id = $1`,
+        [ctx.params.id, b.alt ?? null, b.is_hero ?? null, b.is_visible ?? null, b.sort_order ?? null, b.is_logo ?? null]);
     });
     return { ok: true };
   });
