@@ -1,0 +1,54 @@
+# Render Blueprint – https://render.com/docs/blueprint-spec
+# Doporučení: placená instance webu (starter) – bezplatná usíná, takže by nefungovaly
+# upomínky, synchronizace kalendáře ani odesílání e-mailů na pozadí.
+databases:
+  - name: hasnails-db
+    plan: basic-256mb          # bezplatná databáze po 30 dnech zaniká – pro ostrý provoz nepoužívat
+    databaseName: hasnails
+    user: hasnails
+
+services:
+  - type: web
+    name: hasnails
+    runtime: node
+    plan: starter
+    region: frankfurt
+    buildCommand: npm ci --omit=dev || npm install --omit=dev
+    startCommand: node src/server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase: { name: hasnails-db, property: connectionString }
+      - key: ENCRYPTION_KEY
+        generateValue: true     # NIKDY neměňte po prvním spuštění – šifrují se jím tokeny kalendářů
+      - key: BASE_URL
+        sync: false             # např. https://www.hasnails.cz (bez lomítka na konci)
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_INITIAL_PASSWORD
+        sync: false             # po prvním přihlášení z Renderu odstraňte
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM_EMAIL
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: HASNAILS
+      - key: MAIL_REPLY_TO
+        sync: false
+      - key: BREVO_WEBHOOK_SECRET
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MS_CLIENT_ID
+        sync: false
+      - key: MS_CLIENT_SECRET
+        sync: false
+      - key: MS_TENANT
+        value: common
+      - key: RUN_WORKER
+        value: "1"
