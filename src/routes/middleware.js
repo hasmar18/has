@@ -17,6 +17,17 @@ export async function sessionMw(ctx, next) {
   return next();
 }
 
+/** Veřejná GET stránka na jiném hostu (www., onrender.com) → přesměrování na hlavní adresu (BASE_URL). V produkci jinak cookies a Origin nesedí. */
+export async function canonicalHostMw(ctx, next) {
+  const host = String(ctx.req.headers.host || '').toLowerCase();
+  if (config.isProd && host && ['GET', 'HEAD'].includes(ctx.req.method) && ctx.req.url !== '/healthz') {
+    let want = '';
+    try { want = new URL(config.baseUrl).host; } catch { /* BASE_URL neplatná */ }
+    if (want && host !== want && !/^(localhost|127\.)/.test(host)) return ctx.redirect(`${config.baseUrl}${ctx.req.url}`, 308);
+  }
+  return next();
+}
+
 /** Obrana proti cross-site požadavkům: kontrola hlavičky Origin u změn (kromě webhooků od třetích stran). */
 export async function originMw(ctx, next) {
   if (UNSAFE.has(ctx.req.method) && !ctx.url.pathname.startsWith('/api/webhooks/')) {

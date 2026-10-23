@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { App, securityHeaders } from './lib/http.js';
 import { config } from './config.js';
 import { query } from './db.js';
-import { originMw, sessionMw } from './routes/middleware.js';
+import { canonicalHostMw, originMw, sessionMw } from './routes/middleware.js';
 import * as authRoutes from './routes/auth.js';
 import * as publicRoutes from './routes/public.js';
 import * as adminRoutes from './routes/admin.js';
@@ -15,6 +15,7 @@ const publicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 
 export function createApp() {
   const app = new App();
   app.headers = securityHeaders(config.isProd);
+  app.use(canonicalHostMw);
   app.use(originMw);
   app.use(sessionMw);
 
