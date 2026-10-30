@@ -90,7 +90,7 @@ async function dashboard() {
 }
 
 // ---------- Kalendář ----------
-const cal = { mode: 'week', date: today() };
+const cal = { mode: window.innerWidth < 700 ? 'day' : 'week', date: today() };
 async function calendarView() {
   const s = await api('/api/admin/settings'); TZ = s.settings.timezone;
   const hours = await api('/api/admin/hours');
@@ -231,12 +231,14 @@ async function bookingsView() {
     if (f.range === 'future') p.set('from', new Date().toISOString()); if (f.range === 'past') p.set('to', new Date().toISOString());
     const { bookings } = await api(`/api/admin/bookings?${p}`);
     if (f.range === 'future') bookings.reverse();
-    box.replaceChildren(bookings.length ? h('table', { class: 'tbl' }, h('thead', {}, h('tr', {}, ['Termín', 'Klientka', 'Služba', 'Stav', 'Kalendář', ''].map((t) => h('th', { text: t })))), h('tbody', {}, bookings.map((b) => h('tr', {},
-      h('td', { text: dtLabel(b.starts_at) }), h('td', {}, b.client_name, h('div', { class: 'small muted', text: [b.client_phone, b.client_email].filter(Boolean).join(' · ') })), h('td', { text: b.service_name }), h('td', {}, pill(b.status)),
-      h('td', {}, b.cal_drift ? h('span', { class: 'pill bad', text: 'rozdíl' }) : b.cal_error ? h('span', { class: 'pill bad', text: 'chyba' }) : b.cal_state === 'synced' ? h('span', { class: 'pill good', text: 'ok' }) : ''),
-      h('td', {}, h('button', { class: 'btn ghost xs', onclick: () => bookingForm(b.id, {}, load) }, 'Detail')))))) : h('p', { class: 'muted', text: 'Žádné rezervace.' }));
+    box.replaceChildren(bookings.length ? h('div', { class: 'bk-list' }, bookings.map((b) => h('div', { class: 'bk-card' },
+      h('div', { class: 'bk-top' }, h('strong', { text: dtLabel(b.starts_at) }), pill(b.status), b.cal_drift ? h('span', { class: 'pill bad', text: 'rozdíl v kalendáři' }) : b.cal_error ? h('span', { class: 'pill bad', text: 'chyba kalendáře' }) : ''),
+      h('div', { class: 'bk-name', text: b.client_name }), h('div', { class: 'small muted', text: b.service_name }),
+      h('div', { class: 'small muted', text: [b.client_phone, b.client_email].filter(Boolean).join(' · ') }),
+      h('div', { class: 'bk-btns' }, h('button', { class: 'btn ghost sm', onclick: () => bookingForm(b.id, {}, load) }, 'Detail'),
+        b.client_email ? h('button', { class: 'btn sm', onclick: () => repeatForm(b, load) }, 'Zopakovat') : '')))) : h('p', { class: 'muted', text: 'Žádné rezervace.' }));
   });
-  page('Rezervace', h('div', { class: 'bar' }, h('input', { type: 'search', placeholder: 'Hledat jméno, e-mail, telefon', 'aria-label': 'Hledat', oninput: (e) => { f.q = e.target.value; clearTimeout(bookingsView.t); bookingsView.t = setTimeout(load, 300); } }),
+  page('Rezervace', h('div', { class: 'bar stack' }, h('input', { type: 'search', placeholder: 'Hledat jméno, e-mail, telefon', 'aria-label': 'Hledat', oninput: (e) => { f.q = e.target.value; clearTimeout(bookingsView.t); bookingsView.t = setTimeout(load, 300); } }),
     h('select', { 'aria-label': 'Období', onchange: (e) => { f.range = e.target.value; load(); } }, [['future', 'Nadcházející'], ['past', 'Minulé'], ['all', 'Všechny']].map(([v, t]) => h('option', { value: v, text: t }))),
     h('select', { 'aria-label': 'Stav', onchange: (e) => { f.status = e.target.value; load(); } }, [['', 'Všechny stavy'], ['confirmed', 'Potvrzeno'], ['held', 'Čeká na ověření'], ['cancelled', 'Zrušeno'], ['completed', 'Proběhlo'], ['no_show', 'Nedostavila se']].map(([v, t]) => h('option', { value: v, text: t }))),
     h('button', { class: 'btn sm', onclick: () => bookingForm(null, {}, load) }, '+ Nová rezervace')), box);
