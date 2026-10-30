@@ -69,16 +69,25 @@ export function renderEmail(templateKey, tpl, vars, content) {
   const btnUrl = btn && vars[btn[1]];
   const codeLine = templateKey === 'booking_verify' && vars.code;
 
-  // Záměrně jednoduchý vzhled (jako běžná osobní pošta): bez tabulek, pozadí, obrázků a tlačítek.
-  // Poštovní služby (Gmail, Seznam) hodně stylizované zprávy řadí do „Hromadných“/spamu.
   const htmlParas = paragraphs.map((p) => {
-    if (codeLine && p === String(vars.code)) return `<p style="margin:16px 0;font-size:24px"><b>${esc(p)}</b></p>`;
-    return `<p style="margin:0 0 14px">${esc(p).replace(/\n/g, '<br>')}</p>`;
+    if (codeLine && p === String(vars.code)) {
+      return `<p style="margin:24px 0;text-align:center"><span style="display:inline-block;font-size:32px;letter-spacing:8px;font-weight:700;padding:14px 22px;background:#f6ece8;border-radius:12px;color:#3b2430">${esc(p)}</span></p>`;
+    }
+    return `<p style="margin:0 0 16px;line-height:1.6">${esc(p).replace(/\n/g, '<br>')}</p>`;
   }).join('');
+  const button = btnUrl
+    ? `<p style="margin:28px 0;text-align:center"><a href="${esc(btnUrl)}" style="display:inline-block;background:#3b2430;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600">${esc(btn[0])}</a></p>`
+    : '';
   const calLinks = calendarLinks(templateKey, vars);
-  const links = [...(btnUrl ? [[btn[0], btnUrl]] : []), ...calLinks];
-  const linksHtml = links.length ? `<p style="margin:0 0 14px">${links.map(([t, u]) => `${esc(t)}: <a href="${esc(u)}">${esc(u.length > 60 ? t : u)}</a>`).join('<br>')}</p>` : '';
-  const html = `<!doctype html><html lang="cs"><body style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#222">${htmlParas}${linksHtml}<p style="margin:20px 0 0;font-size:13px;color:#555">HASNAILS${content.contact_name ? ` · ${esc(content.contact_name)}` : ''}<br>${esc(content.contact_address || '')}<br>${esc(content.contact_phone || '')}</p></body></html>`;
+  const calHtml = calLinks.length ? `<p style="margin:0 0 24px;text-align:center;font-size:14px">${calLinks.map(([t, u]) => `<a href="${esc(u)}" style="display:inline-block;margin:4px 6px;padding:10px 18px;border:1px solid #3b2430;border-radius:999px;color:#3b2430;text-decoration:none;font-weight:600">${esc(t)}</a>`).join('')}</p>` : '';
+  const studio = esc(content.contact_name || '');
+  const html = `<!doctype html><html lang="cs"><body style="margin:0;background:#faf6f2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2a2024">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden">
+<tr><td style="padding:28px 32px 8px;text-align:center"><div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;letter-spacing:6px;color:#3b2430">HASNAILS</div></td></tr>
+<tr><td style="padding:16px 32px 8px;font-size:16px">${htmlParas}${button}${calHtml}</td></tr>
+<tr><td style="padding:16px 32px 28px;font-size:13px;color:#7a6a70;border-top:1px solid #f0e6e2">${studio}${studio ? ' · ' : ''}${esc(content.contact_address || '')}<br>${esc(content.contact_phone || '')}</td></tr>
+</table></td></tr></table></body></html>`;
   const text = `${bodyText}${btnUrl ? `\n\n${btn[0]}: ${btnUrl}` : ''}${calLinks.map(([t, u]) => `\n${t}: ${u}`).join('')}\n\n--\nHASNAILS · ${content.contact_address || ''} · ${content.contact_phone || ''}\n`;
   return { subject, html, text };
 }
