@@ -102,3 +102,5 @@ address{font-style:normal}.mt{margin-top:18px}.pad{padding:40px}.card p:last-chi
 .mc.sel{background:var(--mauve);color:#fff;opacity:1;box-shadow:none}
 .mtimes h3{margin-bottom:12px;text-transform:capitalize}
 .pick .slots{grid-template-columns:repeat(3,1fr);margin-top:0}
+.center{text-align:center}
+.pricelist{display:block;margin:0 auto 24px;width:100%;max-width:520px;height:auto;border-radius:16px;border:1px solid var(--line)}

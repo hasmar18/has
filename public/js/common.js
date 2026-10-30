@@ -41,7 +41,7 @@ let bootP;
 export const bootstrap = () => (bootP ||= api('/api/public/bootstrap'));
 
 const LOGO = '<svg viewBox="0 0 22 28" aria-hidden="true"><path d="M3 27V10C3 4.5 6.5 1 11 1s8 3.5 8 9v17z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 27V11c0-3 1.7-5 4-5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/></svg>';
-const NAV = [['/', 'Úvod'], ['/#sluzby', 'Služby'], ['/#galerie', 'Galerie'], ['/kontakt', 'Kontakt'], ['/ucet', 'Můj účet']];
+const NAV = [['/', 'Úvod'], ['/#sluzby', 'Služby'], ['/cenik', 'Ceník'], ['/#galerie', 'Galerie'], ['/kontakt', 'Kontakt'], ['/ucet', 'Můj účet']];
 
 function themeNow() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
 function paintThemeBtn() {

@@ -19,6 +19,8 @@ export const CONTENT_DEFS = {
     label: 'Storno podmínky', multiline: true,
     def: '',
   },
+  pricelist_title: { label: 'Ceník – nadpis', multiline: false, def: 'Ceník' },
+  pricelist_image: { label: 'Ceník – obrázek (ID, nastavuje se tlačítkem výše)', multiline: false, def: '' },
   gallery_title: { label: 'Galerie – nadpis', multiline: false, def: 'Galerie' },
   instagram_title: { label: 'Instagram – nadpis', multiline: false, def: 'Instagram' },
   instagram_url: { label: 'Instagram – odkaz', multiline: false, def: 'https://www.instagram.com/hasnails_ostrava/' },

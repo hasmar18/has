@@ -340,12 +340,34 @@ async function galleryView() {
 }
 
 // ---------- Obsah webu ----------
+function pricelistPanel(content) {
+  const cur = /^[0-9a-f-]{36}$/.test(content.pricelist_image || '') ? content.pricelist_image : '';
+  const img = h('img', { src: cur ? `/media/${cur}` : '/img/cenik.jpg', alt: 'Aktuální ceník', style: 'max-width:200px;width:100%;border-radius:10px;border:1px solid var(--line,#ddd)' });
+  const file = h('input', { type: 'file', accept: 'image/*', id: 'pl-file' });
+  const save = h('button', { class: 'btn', onclick: guard(async () => {
+    const f = file.files[0]; if (!f) throw new Error('Vyberte obrázek ceníku.');
+    const blob = await resizeImage(f, 2000);
+    const r = await fetch('/api/admin/gallery?hidden=1&alt=Cen%C3%ADk', { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'image/jpeg', 'x-csrf-token': sessionStorage.getItem('csrf') || '' }, body: blob });
+    const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error?.message || 'Nahrání se nezdařilo.');
+    await api('/api/admin/content', { method: 'PUT', body: { pricelist_image: j.id || j.image?.id } });
+    if (cur) { try { await api(`/api/admin/gallery/${cur}`, { method: 'DELETE' }); } catch { /* starý obrázek může chybět */ } }
+    toast('Ceník nahrán'); contentView();
+  }) }, 'Nahrát nový ceník');
+  const reset = cur ? h('button', { class: 'btn ghost', onclick: guard(async () => {
+    await api('/api/admin/content', { method: 'PUT', body: { pricelist_image: '' } });
+    try { await api(`/api/admin/gallery/${cur}`, { method: 'DELETE' }); } catch { /* ignore */ }
+    toast('Vrácen původní ceník'); contentView();
+  }) }, 'Vrátit původní') : '';
+  return h('div', { class: 'panel' }, h('h3', { text: 'Ceník (obrázek na stránce Ceník)' }),
+    h('p', { class: 'muted', text: 'Nahrajte fotku nebo obrázek ceníku. Nahradí ten stávající.' }), img, h('div', { class: 'row' }, file, save, reset));
+}
 async function contentView() {
   const { content, fields } = await api('/api/admin/content');
   const inputs = {};
   page('Obsah webu', h('p', { class: 'muted', text: 'Texty na webu. Právní texty (podmínky, ochrana údajů) jsou jen výchozí šablona – nechte je před spuštěním zkontrolovat.' }),
-    h('div', { class: 'panel' }, fields.map((f) => { inputs[f.key] = f.multiline ? h('textarea', { id: `c-${f.key}`, class: f.key.endsWith('_text') && f.multiline ? 'big' : '' }, content[f.key] || '') : inp(`c-${f.key}`, content[f.key] || ''); return h('div', {}, ...fld(f.label, inputs[f.key], `c-${f.key}`)); })),
-    h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { const patch = {}; for (const f of fields) if (inputs[f.key].value !== (content[f.key] || '')) patch[f.key] = inputs[f.key].value; await api('/api/admin/content', { method: 'PUT', body: patch }); toast('Uloženo'); contentView(); }) }, 'Uložit texty')));
+    pricelistPanel(content),
+    h('div', { class: 'panel' }, fields.filter((f) => f.key !== 'pricelist_image').map((f) => { inputs[f.key] = f.multiline ? h('textarea', { id: `c-${f.key}`, class: f.key.endsWith('_text') && f.multiline ? 'big' : '' }, content[f.key] || '') : inp(`c-${f.key}`, content[f.key] || ''); return h('div', {}, ...fld(f.label, inputs[f.key], `c-${f.key}`)); })),
+    h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { const patch = {}; for (const f of fields.filter((x) => x.key !== 'pricelist_image')) if (inputs[f.key].value !== (content[f.key] || '')) patch[f.key] = inputs[f.key].value; await api('/api/admin/content', { method: 'PUT', body: patch }); toast('Uloženo'); contentView(); }) }, 'Uložit texty')));
 }
 
 // ---------- E-maily ----------
