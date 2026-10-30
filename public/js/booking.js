@@ -12,42 +12,82 @@ function renderServices() {
   if (!boot) return view.replaceChildren(h('div', { class: 'alert err', text: 'Obsah se nepodařilo načíst. Zkuste stránku obnovit.' }));
   if (!boot.booking.enabled) return view.replaceChildren(h('div', { class: 'alert info' }, 'Online rezervace zatím není spuštěna. Termín si prosím domluvte telefonicky.'), contactBox());
   if (!boot.categories.length) return view.replaceChildren(h('div', { class: 'alert info', text: 'Nabídka služeb se připravuje.' }), contactBox());
-  const pick = (s) => { st.svc = s; st.day = null; st.slot = null; st.from = null; renderDates(); };
+  const pick = (s) => { st.svc = s; st.day = null; st.slot = null; st.from = null; st.month = null; renderDates(); };
   view.replaceChildren(h('h2', { text: 'Vyberte službu' }), boot.categories.map((c) => [h('h3', { class: 'cat-title', text: c.name }), c.services.map((s) => serviceCard(s, { onclick: () => pick(s) }))]));
   const pre = new URLSearchParams(location.search).get('sluzba');
   if (pre && !st.preDone) { st.preDone = true; const s = boot.categories.flatMap((c) => c.services).find((x) => x.id === pre); if (s) pick(s); }
 }
 
+const MONTHS = ['leden', 'únor', 'březen', 'duben', 'květen', 'červen', 'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'];
+const pad = (n) => String(n).padStart(2, '0');
+const tzToday = () => new Intl.DateTimeFormat('sv-SE', { timeZone: boot?.booking?.timezone || 'Europe/Prague' }).format(new Date());
+const addMonth = (ym, k) => { const [y, m] = ym.split('-').map(Number); const d = new Date(Date.UTC(y, m - 1 + k, 1)); return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`; };
+const monthEnd = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10); };
+const plusDays = (iso, n) => { const p = dateParts(iso); return new Date(Date.UTC(p.y, p.m - 1, p.d + n)).toISOString().slice(0, 10); };
+const monthCache = new Map();
+async function loadMonth(ym) {
+  const key = `${st.svc.id}|${ym}`;
+  if (monthCache.has(key)) return monthCache.get(key);
+  const today = tzToday(); const first = `${ym}-01`; const to = monthEnd(ym);
+  if (to < today) return { days: [] };
+  const q = new URLSearchParams({ service_id: st.svc.id, from: first > today ? first : today, to });
+  const r = await api(`/api/public/availability?${q}`);
+  if (!r.disabled && !r.degraded) monthCache.set(key, r);
+  return r;
+}
+const hasFree = (r) => (r.days || []).some((d) => d.slots.length);
+
 async function renderDates() {
-  setStep(1); clear(msg);
+  setStep(1); clear(msg); monthCache.clear();
   view.replaceChildren(h('button', { class: 'btn ghost sm', type: 'button', onclick: renderServices }, '← Jiná služba'), h('h2', { text: `${st.svc.name}` }), h('p', { class: 'muted', text: [dur(st.svc.duration_minutes), st.svc.price_czk != null ? money(st.svc.price_czk) : ''].filter(Boolean).join(' · ') }), h('div', { id: 'avail' }, h('span', { class: 'spin' })));
   try {
-    const q = new URLSearchParams({ service_id: st.svc.id }); if (st.from) q.set('from', st.from);
-    const r = await api(`/api/public/availability?${q}`);
     const box = $('#avail');
+    const start = st.month || tzToday().slice(0, 7);
+    let ym = start; let r = await loadMonth(ym);
     if (r.disabled || r.degraded) { box.replaceChildren(h('div', { class: 'alert info', text: r.message || 'Online rezervace je dočasně nedostupná.' }), contactBox()); return; }
-    st.days = r.days;
-    const free = r.days.filter((d) => d.slots.length);
-    if (!free.length) {
-      const last = r.days.at(-1)?.date;
-      box.replaceChildren(h('div', { class: 'alert info', text: 'V tomto období nejsou volné termíny.' }),
-        h('div', { class: 'row' }, h('button', { class: 'btn ghost', type: 'button', onclick: () => { st.from = nextFrom(last); renderDates(); } }, 'Další dny →')),
-        contactBox());
-      return;
+    if (!st.month && !hasFree(r)) {
+      for (let i = 0; i < 3; i += 1) { const n = addMonth(ym, 1); const nr = await loadMonth(n); if (nr.disabled || nr.degraded) break; ym = n; r = nr; if (hasFree(r)) break; }
+      if (!hasFree(r)) { box.replaceChildren(h('div', { class: 'alert info', text: 'V nejbližších měsících nejsou volné termíny.' }), contactBox()); return; }
     }
-    if (!st.day || !free.find((d) => d.date === st.day)) st.day = free[0].date;
-    drawDays(box);
+    st.month = ym; drawMonth(box);
   } catch (e) { showErr(msg, e); $('#avail')?.replaceChildren(contactBox()); }
 }
-const nextFrom = (last) => { if (!last) return null; const p = dateParts(last); const d = new Date(Date.UTC(p.y, p.m - 1, p.d + 1)); return d.toISOString().slice(0, 10); };
-function drawDays(box) {
-  const day = st.days.find((d) => d.date === st.day);
-  box.replaceChildren(
-    h('div', { class: 'days', role: 'group', 'aria-label': 'Vyberte den' }, st.days.map((d) => { const p = dateParts(d.date);
-      return h('button', { class: `day${d.date === st.day ? ' sel' : ''}`, type: 'button', disabled: !d.slots.length, 'aria-pressed': d.date === st.day, onclick: () => { st.day = d.date; drawDays(box); } }, WD[p.wd], h('b', { text: p.d }), `${p.m}.`); })),
-    h('p', { class: 'small' }, h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { st.from = nextFrom(st.days.at(-1).date); renderDates(); } }, 'Zobrazit další dny →'), st.from ? h('button', { class: 'btn ghost sm', type: 'button', onclick: () => { st.from = null; renderDates(); } }, '← Zpět na nejbližší') : ''),
-    h('h3', { text: dateCs(st.day) }),
-    h('div', { class: 'slots', role: 'group', 'aria-label': 'Volné časy' }, day.slots.map((s) => h('button', { class: 'slot', type: 'button', onclick: () => { st.slot = s; renderDetails(); } }, s.time))));
+
+async function goMonth(box, k) {
+  const ym = addMonth(st.month, k);
+  box.setAttribute('aria-busy', 'true');
+  try { const r = await loadMonth(ym); if (r.disabled || r.degraded) throw new Error(r.message || 'Online rezervace je dočasně nedostupná.'); st.month = ym; st.day = null; drawMonth(box); }
+  catch (e) { showErr(msg, e); } finally { box.removeAttribute('aria-busy'); }
+}
+
+function drawMonth(box) {
+  const r = monthCache.get(`${st.svc.id}|${st.month}`) || { days: [] };
+  const byDate = new Map((r.days || []).map((d) => [d.date, d.slots]));
+  if (!st.day || !st.day.startsWith(st.month) || !(byDate.get(st.day) || []).length) st.day = [...byDate.entries()].find(([, sl]) => sl.length)?.[0] || null;
+  const [y, m] = st.month.split('-').map(Number);
+  const lead = (new Date(Date.UTC(y, m - 1, 1)).getUTCDay() + 6) % 7;
+  const dim = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const today = tzToday();
+  const cells = [];
+  for (let i = 0; i < lead; i += 1) cells.push(h('span', { class: 'mc empty' }));
+  for (let d = 1; d <= dim; d += 1) {
+    const date = `${st.month}-${pad(d)}`; const free = (byDate.get(date) || []).length > 0;
+    cells.push(h('button', { class: `mc${free ? ' free' : ''}${date === st.day ? ' sel' : ''}${date === today ? ' today' : ''}`, type: 'button', disabled: !free, 'aria-pressed': date === st.day, 'aria-label': free ? dateCs(date) : `${dateCs(date)} – bez volných termínů`, onclick: () => { st.day = date; drawMonth(box); } }, String(d)));
+  }
+  const canPrev = st.month > today.slice(0, 7);
+  const canNext = `${addMonth(st.month, 1)}-01` <= plusDays(today, boot?.booking?.max_advance_days || 60);
+  const slots = st.day ? byDate.get(st.day) || [] : [];
+  box.replaceChildren(h('div', { class: 'pick' },
+    h('div', { class: 'mcal' },
+      h('div', { class: 'mhead' },
+        h('button', { class: 'mnav', type: 'button', disabled: !canPrev, 'aria-label': 'Předchozí měsíc', onclick: () => goMonth(box, -1) }, '‹'),
+        h('strong', { text: `${MONTHS[m - 1]} ${y}`, 'aria-live': 'polite' }),
+        h('button', { class: 'mnav', type: 'button', disabled: !canNext, 'aria-label': 'Další měsíc', onclick: () => goMonth(box, 1) }, '›')),
+      h('div', { class: 'mwd' }, WD.map((w) => h('span', { text: w.toLowerCase() }))),
+      h('div', { class: 'mgrid', role: 'group', 'aria-label': 'Vyberte den' }, cells)),
+    h('div', { class: 'mtimes' },
+      st.day ? [h('h3', { text: dateCs(st.day) }), h('div', { class: 'slots', role: 'group', 'aria-label': 'Volné časy' }, slots.map((sl) => h('button', { class: 'slot', type: 'button', onclick: () => { st.slot = sl; renderDetails(); } }, sl.time)))]
+        : [h('p', { class: 'muted', text: 'V tomto měsíci nejsou volné termíny. Zkuste další měsíc.' })])));
 }
 
 function summary() {
