@@ -43,9 +43,26 @@ export const bootstrap = () => (bootP ||= api('/api/public/bootstrap'));
 const LOGO = '<svg viewBox="0 0 22 28" aria-hidden="true"><path d="M3 27V10C3 4.5 6.5 1 11 1s8 3.5 8 9v17z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 27V11c0-3 1.7-5 4-5" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".5"/></svg>';
 const NAV = [['/', 'Úvod'], ['/#sluzby', 'Služby'], ['/#galerie', 'Galerie'], ['/kontakt', 'Kontakt'], ['/ucet', 'Můj účet']];
 
+function themeNow() { return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark'; }
+function paintThemeBtn() {
+  const b = document.querySelector('.theme-btn'); if (!b) return;
+  const dark = themeNow() === 'dark';
+  b.textContent = dark ? '☀' : '☾';
+  b.setAttribute('aria-label', dark ? 'Přepnout na světlý režim' : 'Přepnout na tmavý režim');
+  b.setAttribute('title', dark ? 'Světlý režim' : 'Tmavý režim');
+}
+function toggleTheme() {
+  const next = themeNow() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try { localStorage.setItem('hn_theme', next); } catch { /* bez paměti */ }
+  const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', next === 'dark' ? '#0e0e0e' : '#fbf7f3');
+  paintThemeBtn();
+}
+
 export function chrome(active, content, logoId) {
   const hdr = h('header', { class: 'site' }, h('div', { class: 'wrap' },
     h('a', { class: 'logo', href: '/', 'aria-label': 'HASNAILS – úvodní stránka' }),
+    h('button', { class: 'theme-btn', type: 'button', onclick: toggleTheme }),
     h('button', { class: 'menu-btn', 'aria-expanded': 'false', 'aria-controls': 'mainnav', onclick: (e) => { const n = $('#mainnav'); const o = n.classList.toggle('open'); e.currentTarget.setAttribute('aria-expanded', o); } }, 'Menu'),
     h('nav', { class: 'main', id: 'mainnav', 'aria-label': 'Hlavní navigace' },
       NAV.map(([href, t]) => h('a', { href, ...(href === active ? { 'aria-current': 'page' } : {}) }, t)),
@@ -61,6 +78,7 @@ export function chrome(active, content, logoId) {
   ), h('p', { class: 'small', text: `© ${new Date().getFullYear()} HASNAILS · ilustrační fotografie: Unsplash` })));
   document.body.prepend(h('a', { class: 'skip', href: '#main' }, 'Přeskočit na obsah'), hdr);
   document.body.append(ftr);
+  paintThemeBtn();
 }
 export async function initPage(active) {
   let boot = null;
