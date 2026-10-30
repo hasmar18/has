@@ -254,7 +254,7 @@ export class App {
     const headers = {
       'Content-Type': type,
       ETag: etag,
-      'Cache-Control': ext === '.html' ? 'no-cache' : 'public, max-age=3600',
+      'Cache-Control': ['.html', '.css', '.js', '.webmanifest'].includes(ext) ? 'no-cache' : 'public, max-age=3600',
     };
     if (ctx.req.headers['if-none-match'] === etag) return ctx.send(304, '', headers);
     let body = await fsp.readFile(file);
