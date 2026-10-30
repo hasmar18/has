@@ -52,7 +52,7 @@ export function mount(app) {
       { key: 'services', ok: svc.rows[0].n > 0, label: 'Přidejte alespoň jednu službu (Služby).' },
       { key: 'prices', ok: noPrice.rows[0].n === 0, label: `Doplňte ceny u služeb (${noPrice.rows[0].n} bez ceny) – Služby.` },
       { key: 'hours', ok: hours.rows[0].n > 0, label: 'Nastavte dny a časy, kdy lze zadávat rezervace (Doba rezervací).' },
-      { key: 'email', ok: emailOk, label: 'Nakonfigurujte odesílání e-mailů – proměnné BREVO_API_KEY a MAIL_FROM_EMAIL v prostředí Renderu.' },
+      { key: 'email', ok: emailOk, label: 'Nakonfigurujte odesílání e-mailů – proměnné RESEND_API_KEY a MAIL_FROM_EMAIL v prostředí Renderu.' },
       { key: 'calendar', ok: conn.rows[0].total > 0, label: 'Propojte kalendář (Nastavení → Kalendář).', optional: true },
       { key: 'calendar_write', ok: Number(conn.rows[0].writers) > 0 || conn.rows[0].total === 0, label: 'Vyberte kalendář, do kterého se zapisují rezervace.', optional: true },
       { key: 'reviewed', ok: settings.settings_reviewed, label: 'Zkontrolujte nastavení (storno lhůta, rezerva, předstih) a právní texty, pak to potvrďte v Nastavení.' },

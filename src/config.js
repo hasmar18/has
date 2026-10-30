@@ -16,6 +16,7 @@ export function loadConfig() {
     encryptionKey: env.ENCRYPTION_KEY || '',
     runWorker: bool(env.RUN_WORKER, true),
     secureCookies: baseUrl.startsWith('https://'),
+    resend: { apiKey: env.RESEND_API_KEY || '' },
     brevo: {
       apiKey: env.BREVO_API_KEY || '',
       fromEmail: env.MAIL_FROM_EMAIL || '',

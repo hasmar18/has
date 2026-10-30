@@ -10,7 +10,33 @@ let transport = null;
 export const setTransport = (fn) => { transport = fn; };
 
 export function emailProviderConfigured() {
-  return Boolean(transport) || Boolean(config.brevo.apiKey && config.brevo.fromEmail);
+  return Boolean(transport) || Boolean((config.resend.apiKey || config.brevo.apiKey) && config.brevo.fromEmail);
+}
+
+async function resendTransport({ to, subject, html, text }) {
+  const body = {
+    from: `${config.brevo.fromName} <${config.brevo.fromEmail}>`,
+    to: [to],
+    subject,
+    html,
+    text,
+  };
+  if (config.brevo.replyTo) body.reply_to = config.brevo.replyTo;
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { authorization: `Bearer ${config.resend.apiKey}`, 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  const txt = await res.text();
+  if (!res.ok) {
+    const err = new Error(`Resend ${res.status}: ${txt.slice(0, 300)}`);
+    err.permanent = res.status >= 400 && res.status < 500 && res.status !== 429 && res.status !== 408;
+    throw err;
+  }
+  let id = null;
+  try { id = JSON.parse(txt).id || null; } catch { /* ignore */ }
+  return { messageId: id };
 }
 
 async function brevoTransport({ to, subject, html, text }) {
@@ -133,12 +159,12 @@ export async function sendEmailById(id) {
 
   if (!emailProviderConfigured()) {
     await query(`UPDATE email_log SET status = 'skipped', last_error = $2, updated_at = now() WHERE id = $1`,
-      [id, 'E-mailová služba není nakonfigurována (BREVO_API_KEY, MAIL_FROM_EMAIL).']);
+      [id, 'E-mailová služba není nakonfigurována (RESEND_API_KEY, MAIL_FROM_EMAIL).']);
     log.warn(`E-mail #${id} nebyl odeslán – chybí konfigurace Brevo.`);
     return { skipped: true };
   }
   try {
-    const send = transport || brevoTransport;
+    const send = transport || (config.resend.apiKey ? resendTransport : brevoTransport);
     const res = await send({ to: row.to_email, subject: row.subject, html: row.html, text: row.text_body });
     await query(
       `UPDATE email_log SET status = 'sent', provider_message_id = $2, sent_at = now(), html = NULL, text_body = NULL,

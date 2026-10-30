@@ -122,7 +122,7 @@ test('e-mail: bez nakonfigurované služby se záznam označí „skipped“ s v
     const { id } = await queueEmail({ query }, { templateKey: 'account_exists', to: 'x@example.cz', vars: { client_name: 'X' }, dedupeKey: 'noprov' });
     await drainJobs();
     const row = (await query(`SELECT status, last_error FROM email_log WHERE id = $1`, [id])).rows[0];
-    assert.equal(row.status, 'skipped'); assert.match(row.last_error, /BREVO_API_KEY/);
+    assert.equal(row.status, 'skipped'); assert.match(row.last_error, /RESEND_API_KEY/);
     assert.equal(sentEmails.length, 0);
   } finally { Object.assign(cfg.brevo, before); keys.forEach((k, i) => { if (saved[i] !== undefined) process.env[k] = saved[i]; }); captureEmail(); }
 });
