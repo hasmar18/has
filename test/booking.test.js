@@ -158,6 +158,7 @@ test('registrovaná klientka s ověřeným e-mailem: rezervace je hned potvrzen�
   assert.equal(cancel.status, 200); assert.equal(cancel.body.booking.status, 'cancelled');
   await drainJobs();
   assert.ok(sentEmails.some((m) => m.to === 'anna@example.cz' && /zrušena/i.test(m.subject)));
+  assert.ok(sentEmails.some((m) => m.to === ADMIN.email && /Zrušená rezervace/.test(m.subject)), 'majitelka dostala upozornění o zrušení klientkou');
   // znovu zrušit = idempotentní, žádný druhý e-mail
   const n = sentEmails.length;
   assert.equal((await a.post(`/api/me/bookings/${id}/cancel`, {})).status, 200);

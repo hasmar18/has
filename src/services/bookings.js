@@ -275,6 +275,14 @@ export async function cancelBooking(bookingId, { actor, userId = null, reason = 
     if (b.status === 'confirmed' && notify && b.client_email) {
       await queueEmail(tx, { templateKey: 'booking_cancelled', to: b.client_email, bookingId: b.id, dedupeKey: `cancelled:${b.id}`, vars: bookingVars(upd, settings) });
     }
+    if (actor === 'client' && b.status === 'confirmed') {
+      for (const to of await adminAlertRecipients(tx, settings)) {
+        await queueEmail(tx, {
+          templateKey: 'admin_booking_cancelled', to, bookingId: b.id, dedupeKey: `admincancel:${b.id}:${to}`,
+          vars: bookingVars(upd, settings, { details: b.client_phone || '—' }),
+        });
+      }
+    }
     await enqueue(tx, 'calendar_push', { bookingId: b.id }, { dedupeKey: `cal:${b.id}:${upd.version}` });
     return { booking: publicBooking(upd, settings, { admin: actor === 'admin' }) };
   });

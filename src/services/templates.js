@@ -64,6 +64,11 @@ export const DEFAULT_TEMPLATES = {
     subject: 'Nová rezervace – {{client_name}}, {{date}} v {{time}}',
     body: 'Nová online rezervace.\n\nKlientka: {{client_name}}\nTelefon: {{details}}\nSlužba: {{service_name}}\nTermín: {{date}} v {{time}}',
   },
+  admin_booking_cancelled: {
+    label: 'Upozornění pro majitelku: klientka zrušila rezervaci',
+    subject: 'Zrušená rezervace – {{client_name}}, {{date}} v {{time}}',
+    body: 'Klientka {{client_name}} zrušila rezervaci.\n\nSlužba: {{service_name}}\nTermín: {{date}} v {{time}}\nTelefon: {{details}}',
+  },
   admin_reschedule_request: {
     label: 'Upozornění pro majitelku: žádost o změnu termínu',
     subject: 'Žádost o změnu termínu – {{client_name}}',
