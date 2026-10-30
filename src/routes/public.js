@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { query } from '../db.js';
 import { rateLimit } from '../lib/http.js';
-import { HttpError, badRequest, notFound } from '../lib/errors.js';
+import { HttpError, badRequest, notFound, conflict } from '../lib/errors.js';
 import { addDaysStr, localDateStr, parseDateStr } from '../lib/time.js';
 import { getSettings } from '../services/settings.js';
 import { getContent } from '../services/content.js';
@@ -127,6 +127,28 @@ export function mount(app) {
     const { token } = tokenBody.parse(await ctx.json());
     const b = await byToken(token);
     return { booking: bookings.publicBooking(b, await getSettings()), contact: await contactInfo() };
+  });
+
+  app.post('/api/bookings/manage/availability', manageLimit, async (ctx) => {
+    const q = tokenBody.extend({ from: isoDate.optional(), to: isoDate.optional() }).parse(await ctx.json());
+    const b = await byToken(q.token);
+    if (b.status !== 'confirmed') throw conflict('U této rezervace už nelze změnit termín.', 'not_changeable');
+    const settings = await getSettings();
+    const now = new Date();
+    const today = localDateStr(now, settings.timezone);
+    const from = q.from && parseDateStr(q.from) ? q.from : today;
+    let to = q.to && parseDateStr(q.to) ? q.to : addDaysStr(from, 13);
+    if (to > addDaysStr(from, 62)) to = addDaysStr(from, 62);
+    const health = await calendarHealth({ query }, settings, now);
+    if (health.degraded && settings.fail_closed) return { degraded: true, days: [], message: 'Změna termínu je dočasně nedostupná. Prosím zavolejte do studia nebo to zkuste za chvíli.' };
+    const { days } = await computeAvailability({ query }, { durationMinutes: b.service_duration_minutes, fromDate: from, toDate: to, now, settings, excludeBookingId: b.id });
+    return { days, timezone: settings.timezone };
+  });
+
+  app.post('/api/bookings/manage/reschedule', manageLimit, async (ctx) => {
+    const body = tokenBody.extend({ starts_at: z.string().datetime() }).parse(await ctx.json());
+    const b = await byToken(body.token);
+    return bookings.clientReschedule(b.id, new Date(body.starts_at), { ownerCheck: (x) => x.id === b.id });
   });
 
   app.post('/api/bookings/manage/cancel', manageLimit, async (ctx) => {

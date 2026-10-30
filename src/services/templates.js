@@ -16,6 +16,8 @@ export const TEMPLATE_VARS = {
   verify_url: 'Odkaz pro ověření e-mailu',
   reset_url: 'Odkaz pro obnovení hesla',
   details: 'Podrobnosti (chyby, zpráva klientky)',
+  old_date: 'Původní datum (jen u změny termínu)',
+  old_time: 'Původní čas (jen u změny termínu)',
 };
 
 export const DEFAULT_TEMPLATES = {
@@ -68,6 +70,11 @@ export const DEFAULT_TEMPLATES = {
     label: 'Upozornění pro majitelku: klientka zrušila rezervaci',
     subject: 'Zrušená rezervace – {{client_name}}, {{date}} v {{time}}',
     body: 'Klientka {{client_name}} zrušila rezervaci.\n\nSlužba: {{service_name}}\nTermín: {{date}} v {{time}}\nTelefon: {{details}}',
+  },
+  admin_booking_rescheduled: {
+    label: 'Upozornění pro majitelku: klientka změnila termín',
+    subject: 'Změna termínu – {{client_name}}, nově {{date}} v {{time}}',
+    body: 'Klientka {{client_name}} změnila termín rezervace.\n\nSlužba: {{service_name}}\nPůvodně: {{old_date}} v {{old_time}}\nNově: {{date}} v {{time}}\nTelefon: {{details}}',
   },
   admin_reschedule_request: {
     label: 'Upozornění pro majitelku: žádost o změnu termínu',

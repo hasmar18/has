@@ -62,7 +62,7 @@ const pgDate = (d) => (d instanceof Date ? localDateStr(d, 'UTC') : String(d).sl
  * Volné časy pro službu dané délky. Vrací jen časy, které jsou skutečně volné.
  * @returns {{days: {date: string, slots: {start: string, time: string}[]}[]}}
  */
-export async function computeAvailability(db, { durationMinutes, fromDate, toDate, now = new Date(), settings }) {
+export async function computeAvailability(db, { durationMinutes, fromDate, toDate, now = new Date(), settings, excludeBookingId = null }) {
   const tz = settings.timezone;
   const today = localDateStr(now, tz);
   const first = fromDate > today ? fromDate : today;
@@ -78,7 +78,7 @@ export async function computeAvailability(db, { durationMinutes, fromDate, toDat
     db.query(
       `SELECT kind, date_from::text AS date_from, date_to::text AS date_to, start_time::text AS start_time, end_time::text AS end_time
        FROM schedule_exceptions WHERE date_from <= $2::date AND date_to >= $1::date`, [first, last]),
-    loadBusy(db, spanStart, spanEnd, now),
+    loadBusy(db, spanStart, spanEnd, now, { excludeBookingId }),
   ]);
   const hours = hoursRes.rows.map((r) => ({ ...r, weekday: Number(r.weekday) }));
   const exceptions = excRes.rows.map((r) => ({ ...r, date_from: pgDate(r.date_from), date_to: pgDate(r.date_to) }));
@@ -109,9 +109,9 @@ export async function computeAvailability(db, { durationMinutes, fromDate, toDat
 }
 
 /** Je přesně tento počátek stále nabízený (vč. zarovnání na mřížku a pracovní doby)? */
-export async function isSlotOffered(db, { startsAt, durationMinutes, settings, now = new Date() }) {
+export async function isSlotOffered(db, { startsAt, durationMinutes, settings, now = new Date(), excludeBookingId = null }) {
   const date = localDateStr(startsAt, settings.timezone);
-  const { days } = await computeAvailability(db, { durationMinutes, fromDate: date, toDate: date, now, settings });
+  const { days } = await computeAvailability(db, { durationMinutes, fromDate: date, toDate: date, now, settings, excludeBookingId });
   const iso = startsAt.toISOString();
   return days.some((d) => d.date === date && d.slots.some((s) => s.start === iso));
 }

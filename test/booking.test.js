@@ -186,6 +186,34 @@ test('správa přes tajný odkaz: zobrazení, storno lhůta, žádost o změnu; 
   assert.ok(sentEmails.some((m) => /Žádost o změnu termínu/.test(m.subject)), 'majitelka dostala upozornění');
 });
 
+test('klientka si přes odkaz změní termín: nabídka bez vlastního termínu, e-maily, uvolnění starého, lhůta', async () => {
+  const c = new Client(server.url);
+  const r = await c.post('/api/bookings', body());
+  await drainJobs();
+  const v = await c.post(`/api/bookings/${r.body.booking.id}/verify`, { code: codeFromEmail(sentEmails[0]) });
+  const token = new URL(v.body.manage_url).searchParams.get('token');
+  const day = WED();
+  const av = await c.post('/api/bookings/manage/availability', { token, from: day, to: day });
+  assert.equal(av.status, 200);
+  const times = av.body.days[0].slots.map((s) => s.time);
+  assert.ok(times.includes('10:00'), 'vlastní termín se nabízí (není blokovaný sám sebou)');
+  const target = av.body.days[0].slots.find((s) => s.time === '13:00');
+  assert.ok(target);
+  const n = sentEmails.length;
+  const mv = await c.post('/api/bookings/manage/reschedule', { token, starts_at: target.start });
+  assert.equal(mv.status, 200);
+  assert.equal(mv.body.booking.local_time, '13:00');
+  await drainJobs();
+  assert.ok(sentEmails.slice(n).some((m) => m.to === 'jana@example.cz' && /změn|přesun/i.test(m.subject)), 'klientka dostala nové potvrzení');
+  assert.ok(sentEmails.slice(n).some((m) => m.to === ADMIN.email && /Změna termínu/.test(m.subject)), 'majitelka dostala upozornění');
+  assert.ok((await slotsFor(c, day)).includes('10:00'), 'starý termín se uvolnil');
+  assert.ok(!(await slotsFor(c, day)).includes('13:00'), 'nový termín je obsazen');
+  // stejný termín = 400; lhůta < 24 h = 403
+  assert.equal((await c.post('/api/bookings/manage/reschedule', { token, starts_at: target.start })).status, 400);
+  await query(`UPDATE bookings SET starts_at = now() + interval '5 hours', ends_at = now() + interval '6 hours', blocked_until = now() + interval '6 hours' WHERE id = $1`, [r.body.booking.id]);
+  assert.equal((await c.post('/api/bookings/manage/reschedule', { token, starts_at: av.body.days[0].slots.find((s) => s.time === '15:00')?.start || target.start })).status, 403);
+});
+
 test('administrace: nepřihlášený 401, klientka 403, bez CSRF 403, správce projde', async () => {
   const anon = new Client(server.url);
   assert.equal((await anon.get('/api/admin/dashboard')).status, 401);

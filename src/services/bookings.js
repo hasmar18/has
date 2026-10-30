@@ -71,6 +71,7 @@ export function publicBooking(b, settings, { admin = false, now = new Date() } =
     local_time: formatTimeCs(b.starts_at, tz),
     date_label: formatDateCs(b.starts_at, tz),
     can_cancel: b.status === 'confirmed' && hoursLeft >= settings.cancel_hours_before,
+    can_reschedule: b.status === 'confirmed' && hoursLeft >= settings.cancel_hours_before,
     can_request_change: b.status === 'confirmed' && hoursLeft > 0,
     cancel_hours_before: settings.cancel_hours_before,
     client_name: b.client_name,
@@ -306,6 +307,57 @@ export async function requestReschedule(bookingId, message, { ownerCheck, now = 
     }
     return { ok: true };
   });
+}
+
+/** Klientka si sama přesune potvrzenou rezervaci na jiný volný termín (stejná pravidla jako při rušení). */
+export async function clientReschedule(bookingId, startsAt, { userId = null, ownerCheck = null, now = new Date() } = {}) {
+  const settings = await getSettings();
+  await ensureCalendarFresh({ query }, settings, { now, maxAgeMs: 20_000 });
+  try {
+    return await withTx(async (tx) => {
+      await lockAvailability(tx);
+      const b = (await tx.query(`SELECT * FROM bookings WHERE id = $1 FOR UPDATE`, [bookingId])).rows[0];
+      if (!b || (ownerCheck && !ownerCheck(b))) throw notFound('Rezervace nenalezena.');
+      if (b.status !== 'confirmed' || b.starts_at <= now) throw conflict('U této rezervace už nelze změnit termín.', 'not_changeable');
+      const hoursLeft = (b.starts_at.getTime() - now.getTime()) / 3600_000;
+      if (hoursLeft < settings.cancel_hours_before) {
+        const content = await getContent(tx);
+        throw forbidden(`Termín už nelze změnit online (nejpozději ${settings.cancel_hours_before} h předem). Prosím zavolejte na ${content.contact_phone}.`);
+      }
+      if (startsAt.getTime() === b.starts_at.getTime()) throw badRequest('Vybraný termín je stejný jako současný.');
+      if (!(await isSlotOffered(tx, { startsAt, durationMinutes: b.service_duration_minutes, settings, now, excludeBookingId: b.id }))) {
+        throw conflict('Tento termín už není k dispozici. Vyberte prosím jiný čas.', 'slot_unavailable');
+      }
+      const endsAt = addMinutes(startsAt, b.service_duration_minutes);
+      const blockedUntil = addMinutes(endsAt, settings.buffer_minutes);
+      const upd = (await tx.query(
+        `UPDATE bookings SET starts_at = $2, ends_at = $3, blocked_until = $4, conflict_override = false,
+           version = version + 1, updated_at = now() WHERE id = $1 RETURNING *`, [b.id, startsAt, endsAt, blockedUntil])).rows[0];
+      await addHistory(tx, b.id, 'client', userId, 'rescheduled', {
+        from: { starts_at: b.starts_at, duration: b.service_duration_minutes }, to: { starts_at: startsAt, duration: b.service_duration_minutes },
+      });
+      const manage = upd.manage_token_enc ? manageUrl(decrypt(upd.manage_token_enc)) : '';
+      await enqueue(tx, 'calendar_push', { bookingId: b.id }, { dedupeKey: `cal:${b.id}:${upd.version}` });
+      if (upd.client_email) {
+        await queueEmail(tx, {
+          templateKey: 'booking_rescheduled', to: upd.client_email, bookingId: b.id, dedupeKey: `rescheduled:${b.id}:${upd.version}`,
+          vars: bookingVars(upd, settings, { manage_url: manage }),
+        });
+        await scheduleReminders(tx, upd, settings, now);
+      }
+      for (const to of await adminAlertRecipients(tx, settings)) {
+        await queueEmail(tx, {
+          templateKey: 'admin_booking_rescheduled', to, bookingId: b.id, dedupeKey: `adminresched:${b.id}:${upd.version}:${to}`,
+          vars: bookingVars(upd, settings, { details: b.client_phone || '—', old_date: formatDateCs(b.starts_at, settings.timezone), old_time: formatTimeCs(b.starts_at, settings.timezone) }),
+        });
+      }
+      await tx.query(`UPDATE reschedule_requests SET status = 'done', handled_at = now() WHERE booking_id = $1 AND status = 'open'`, [b.id]);
+      return { booking: publicBooking(upd, settings) };
+    });
+  } catch (err) {
+    if (isExclusionViolation(err)) throw slotTaken();
+    throw err;
+  }
 }
 
 export async function bookingByManageToken(token) {
