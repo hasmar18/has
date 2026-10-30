@@ -180,6 +180,7 @@ async function bookingForm(id, pre, done) {
     }
   });
   const actions = h('div', { class: 'row', style: false }, h('button', { class: 'btn', type: 'button', onclick: save(false) }, 'Uložit'));
+  if (b && b.client_email) actions.append(h('button', { class: 'btn ghost', type: 'button', onclick: () => { m.close(); repeatForm(b, done); } }, 'Zopakovat rezervaci'));
   if (b && b.status === 'confirmed') actions.append(h('button', { class: 'btn danger', type: 'button', onclick: guard(async () => { const reason = prompt('Důvod zrušení (uvidí ho klientka v e-mailu):', ''); if (reason === null) return; await api(`/api/admin/bookings/${b.id}/cancel`, { method: 'POST', body: { reason, notify: $('#b-notify', form).checked } }); m.close(); toast('Zrušeno'); done?.(); }) }, 'Zrušit rezervaci'),
     h('button', { class: 'btn ghost', type: 'button', onclick: guard(async () => { await api(`/api/admin/bookings/${b.id}`, { method: 'PATCH', body: { status: 'completed', notify: false } }); m.close(); done?.(); }) }, 'Označit jako proběhlé'),
     h('button', { class: 'btn ghost', type: 'button', onclick: guard(async () => { await api(`/api/admin/bookings/${b.id}`, { method: 'PATCH', body: { status: 'no_show', notify: false } }); m.close(); done?.(); }) }, 'Nedostavila se'));
@@ -190,6 +191,26 @@ async function bookingForm(id, pre, done) {
     extra.push(h('details', {}, h('summary', { text: 'Historie' }), detail.history.map((x) => h('div', { class: 'small', text: `${dtLabel(x.at)} · ${x.actor} · ${x.action}` }))));
   }
   const m = modal(b ? 'Rezervace' : 'Nová rezervace', h('div', {}, form, ...extra, actions));
+}
+function repeatForm(b, done) {
+  const svcSel = sel('r-svc', [['', '— stejná jako původní —'], ...SERVICES.filter((s) => s.is_active).map((s) => [s.id, `${s.name} (${dur(s.duration_minutes)})`])], b.service_id || '');
+  const form = h('form', { novalidate: true },
+    h('p', { class: 'muted', text: `${b.client_name}${b.client_email ? ' · ' + b.client_email : ''}` }),
+    h('div', { class: 'f2' }, h('div', {}, ...fld('Služba', svcSel, 'r-svc')), h('div', {}),
+      h('div', {}, ...fld('Datum', inp('r-date', today(), { type: 'date', required: true }), 'r-date')), h('div', {}, ...fld('Začátek', inp('r-time', '10:00', { type: 'time', required: true }), 'r-time'))),
+    h('div', { id: 'r-err' }));
+  const go = (force) => guard(async () => {
+    const body = { starts_at: localToUtc($('#r-date', form).value, $('#r-time', form).value).toISOString(), name: b.client_name, email: b.client_email || '', phone: b.client_phone || '', force: !!force, notify: true };
+    if (svcSel.value) body.service_id = svcSel.value;
+    else if (b.service_id) body.service_id = b.service_id;
+    else { body.service_name = b.service_name; body.duration_minutes = b.duration_minutes; }
+    try { await api('/api/admin/bookings', { method: 'POST', body }); m.close(); toast('Rezervace vytvořena, klientce odešlo potvrzení'); done?.(); }
+    catch (e) {
+      if (e.code === 'conflict_detected') $('#r-err', form).replaceChildren(h('div', { class: 'alert err' }, e.message, ' ', h('button', { class: 'btn danger xs', type: 'button', onclick: go(true) }, 'Přesto vytvořit')));
+      else throw e;
+    }
+  });
+  const m = modal('Zopakovat rezervaci', h('div', {}, form, h('p', { class: 'small muted', text: 'Klientce se odešle potvrzovací e-mail.' }), h('p', {}, h('button', { class: 'btn', type: 'button', onclick: go(false) }, 'Vytvořit'))));
 }
 function blockForm(date, done) {
   const form = h('form', {}, h('div', { class: 'f2' }, h('div', {}, ...fld('Datum', inp('k-date', date, { type: 'date' }), 'k-date')), h('div', {}), h('div', {}, ...fld('Od', inp('k-from', '09:00', { type: 'time' }), 'k-from')), h('div', {}, ...fld('Do', inp('k-to', '12:00', { type: 'time' }), 'k-to'))), ...fld('Důvod (vidíte jen vy)', inp('k-reason', ''), 'k-reason'), h('div', { id: 'k-err' }));

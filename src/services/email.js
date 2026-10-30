@@ -51,6 +51,16 @@ const BUTTONS = {
   password_reset: ['Nastavit nové heslo', 'reset_url'],
 };
 
+const CAL_TEMPLATES = new Set(['booking_confirmed', 'booking_rescheduled', 'booking_reminder']);
+
+function calendarLinks(templateKey, vars) {
+  if (!CAL_TEMPLATES.has(templateKey) || !vars.cal_start || !vars.cal_end) return [];
+  const g = new URLSearchParams({ action: 'TEMPLATE', text: `HASNAILS – ${vars.service_name || 'rezervace'}`, dates: `${vars.cal_start}/${vars.cal_end}`, details: 'Rezervace v HASNAILS', location: vars.address || '' });
+  const out = [['Přidat do Google kalendáře', `https://calendar.google.com/calendar/render?${g}`]];
+  if (vars.ics_url) out.push(['Přidat do kalendáře (iPhone, Outlook)', vars.ics_url]);
+  return out;
+}
+
 export function renderEmail(templateKey, tpl, vars, content) {
   const subject = fill(tpl.subject, vars).replace(/[\r\n]+/g, ' ').trim();
   const bodyText = fill(tpl.body, vars);
@@ -68,15 +78,17 @@ export function renderEmail(templateKey, tpl, vars, content) {
   const button = btnUrl
     ? `<p style="margin:28px 0;text-align:center"><a href="${esc(btnUrl)}" style="display:inline-block;background:#3b2430;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:999px;font-weight:600">${esc(btn[0])}</a></p>`
     : '';
+  const calLinks = calendarLinks(templateKey, vars);
+  const calHtml = calLinks.length ? `<p style="margin:0 0 24px;text-align:center;font-size:14px">${calLinks.map(([t, u]) => `<a href="${esc(u)}" style="display:inline-block;margin:4px 6px;padding:10px 18px;border:1px solid #3b2430;border-radius:999px;color:#3b2430;text-decoration:none;font-weight:600">${esc(t)}</a>`).join('')}</p>` : '';
   const studio = esc(content.contact_name || '');
   const html = `<!doctype html><html lang="cs"><body style="margin:0;background:#faf6f2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#2a2024">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" style="max-width:560px;background:#ffffff;border-radius:18px;overflow:hidden">
 <tr><td style="padding:28px 32px 8px;text-align:center"><div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;letter-spacing:6px;color:#3b2430">HASNAILS</div></td></tr>
-<tr><td style="padding:16px 32px 8px;font-size:16px">${htmlParas}${button}</td></tr>
+<tr><td style="padding:16px 32px 8px;font-size:16px">${htmlParas}${button}${calHtml}</td></tr>
 <tr><td style="padding:16px 32px 28px;font-size:13px;color:#7a6a70;border-top:1px solid #f0e6e2">${studio}${studio ? ' · ' : ''}${esc(content.contact_address || '')}<br>${esc(content.contact_phone || '')}</td></tr>
 </table></td></tr></table></body></html>`;
-  const text = `${bodyText}${btnUrl ? `\n\n${btn[0]}: ${btnUrl}` : ''}\n\n--\nHASNAILS · ${content.contact_address || ''} · ${content.contact_phone || ''}\n`;
+  const text = `${bodyText}${btnUrl ? `\n\n${btn[0]}: ${btnUrl}` : ''}${calLinks.map(([t, u]) => `\n${t}: ${u}`).join('')}\n\n--\nHASNAILS · ${content.contact_address || ''} · ${content.contact_phone || ''}\n`;
   return { subject, html, text };
 }
 

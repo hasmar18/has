@@ -39,9 +39,14 @@ export function priceLabel(b) {
   return `${new Intl.NumberFormat('cs-CZ').format(b.price_czk)} Kč`;
 }
 
+const icsStamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
 export function bookingVars(b, settings, extra = {}) {
   const tz = settings.timezone;
+  let ics_url = '';
+  try { const t = extra.manage_url && new URL(extra.manage_url).searchParams.get('token'); if (t) ics_url = `${config.baseUrl}/rezervace/kalendar.ics?token=${encodeURIComponent(t)}`; } catch { /* bez odkazu */ }
   return {
+    cal_start: icsStamp(b.starts_at), cal_end: icsStamp(b.ends_at), ics_url,
     client_name: b.client_name,
     service_name: b.service_name,
     date: formatDateCs(b.starts_at, tz),

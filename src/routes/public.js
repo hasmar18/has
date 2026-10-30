@@ -110,6 +110,19 @@ export function mount(app) {
     return b;
   };
 
+  const icsEsc = (t) => String(t ?? '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  app.get('/rezervace/kalendar.ics', manageLimit, async (ctx) => {
+    const b = await byToken(String(ctx.query.token || ''));
+    if (b.status !== 'confirmed') throw notFound('Rezervace není aktivní.');
+    const content = await getContent();
+    const stamp = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+    const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//HASNAILS//Rezervace//CS', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+      `UID:${b.id}@hasnails.cz`, `DTSTAMP:${stamp(new Date())}`, `DTSTART:${stamp(b.starts_at)}`, `DTEND:${stamp(b.ends_at)}`,
+      `SUMMARY:${icsEsc(`HASNAILS – ${b.service_name}`)}`, `LOCATION:${icsEsc(content.contact_address || '')}`, 'DESCRIPTION:Rezervace v HASNAILS',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Rezervace HASNAILS', 'TRIGGER:-PT60M', 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
+    ctx.send(200, ics, { 'Content-Type': 'text/calendar; charset=utf-8', 'Content-Disposition': 'attachment; filename="rezervace-hasnails.ics"', 'Cache-Control': 'no-store' });
+  });
+
   app.post('/api/bookings/manage/view', manageLimit, async (ctx) => {
     const { token } = tokenBody.parse(await ctx.json());
     const b = await byToken(token);

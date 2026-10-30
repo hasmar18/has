@@ -309,3 +309,23 @@ test('bez vyžadovaného ověření e-mailu se rezervace potvrdí hned', async (
     assert.equal((await slotsFor(c, WED())).includes('10:00'), false, 'termín je obsazený');
   } finally { await updateSettings({ query }, { require_email_verification: true }); }
 });
+
+test('potvrzovací e-mail obsahuje odkazy do kalendáře a .ics funguje', async () => {
+  await updateSettings({ query }, { require_email_verification: false });
+  try {
+    const c = new Client(server.url);
+    const r = await c.post('/api/bookings', body({ email: 'ics@example.cz' }));
+    assert.equal(r.status, 200);
+    await drainJobs();
+    const mail = sentEmails.find((m) => m.to === 'ics@example.cz');
+    assert.ok(mail.html.includes('calendar.google.com/calendar/render'), 'odkaz Google kalendář');
+    const m = mail.text.match(/kalendar\.ics\?token=[^\s]+/);
+    assert.ok(m, 'odkaz na .ics');
+    const res = await fetch(`${server.url}/rezervace/${m[0]}`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /text\/calendar/);
+    const ics = await res.text();
+    assert.ok(ics.includes('BEGIN:VEVENT') && ics.includes('DTSTART:'));
+    assert.equal((await fetch(`${server.url}/rezervace/kalendar.ics?token=neplatny-token-123`)).status, 404);
+  } finally { await updateSettings({ query }, { require_email_verification: true }); }
+});
