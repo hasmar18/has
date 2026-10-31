@@ -58,10 +58,24 @@ let mainEl;
 function shell() {
   if (me.must_change_password) return forcePassword();
   const side = h('nav', { class: 'side', 'aria-label': 'Administrace' }, h('div', { class: 'brand', text: 'HASNAILS' }), ROUTES.map(([k, t]) => h('a', { href: `#/${k}`, 'data-k': k }, t)),
-    h('a', { href: '/', target: '_blank' }, 'Zobrazit web ↗'), h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await api('/api/auth/logout', { method: 'POST', body: {} }).catch(() => {}); setCsrf(null); me = null; loginView(); } }, 'Odhlásit'));
+    h('a', { href: '/', target: '_blank' }, 'Zobrazit web ↗'), themeBtn(), h('a', { href: '#', onclick: async (e) => { e.preventDefault(); await api('/api/auth/logout', { method: 'POST', body: {} }).catch(() => {}); setCsrf(null); me = null; loginView(); } }, 'Odhlásit'));
   mainEl = h('main', { class: 'main', id: 'main' });
   app.replaceChildren(h('div', { class: 'shell' }, side, mainEl));
   window.removeEventListener('hashchange', route); window.addEventListener('hashchange', route); route();
+}
+function themeBtn() {
+  const isDark = () => document.documentElement.getAttribute('data-theme') !== 'light';
+  const b = h('button', { class: 'theme-adm', type: 'button' });
+  const paint = () => { b.textContent = isDark() ? '☀ Světlý režim' : '☾ Tmavý režim'; };
+  b.onclick = () => {
+    const next = isDark() ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('hn_theme', next); } catch { /* bez paměti */ }
+    const m = document.querySelector('meta[name="theme-color"]'); if (m) m.setAttribute('content', next === 'dark' ? '#0e0e0e' : '#fbf7f3');
+    paint();
+  };
+  paint();
+  return b;
 }
 function forcePassword() {
   const f = h('form', { onsubmit: guard(async (e) => { e.preventDefault(); await api('/api/auth/change-password', { method: 'POST', body: { current_password: $('#c').value, new_password: $('#n').value } }); me.must_change_password = false; toast('Heslo změněno'); shell(); }) },
@@ -432,7 +446,7 @@ function appearancePanel(settings) {
   }));
   draw();
   return h('div', { class: 'panel' }, h('h2', { text: 'Barvy webu' }),
-    h('p', { class: 'muted small', text: 'Kliknutím na barevné kolečko vyberete libovolnou barvu tlačítek, odkazů a zvýraznění. Platí pro veřejný web (ne pro administraci), zvlášť pro světlý a tmavý režim.' }), rows,
+    h('p', { class: 'muted small', text: 'Kliknutím na barevné kolečko vyberete libovolnou barvu tlačítek, odkazů a zvýraznění. Platí pro web i administraci, zvlášť pro světlý a tmavý režim.' }), rows,
     h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/settings', { method: 'PUT', body: { theme_light_custom: custom.light, theme_dark_custom: custom.dark } }); toast('Barvy uloženy – na webu se projeví po obnovení stránky'); }) }, 'Uložit barvy')));
 }
 function calendarPanel(cc) {
