@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { query } from '../db.js';
+import { PRESET_IDS } from './theme.js';
 
 // Definice nastavení: výchozí hodnota + validační schéma. Hodnoty jsou v tabulce `settings` (jsonb).
 const timeZone = z.string().refine((tz) => { try { new Intl.DateTimeFormat('en', { timeZone: tz }); return true; } catch { return false; } }, 'Neplatná časová zóna');
@@ -20,6 +21,8 @@ export const SETTING_DEFS = {
   calendar_poll_minutes: { def: 2, schema: z.number().int().min(1).max(60) },
   admin_alert_email: { def: '', schema: z.union([z.literal(''), z.string().email()]) },
   retention_months: { def: 24, schema: z.number().int().min(1).max(120) },
+  theme_light: { def: 'ruzova', schema: z.enum(PRESET_IDS) },
+  theme_dark: { def: 'ruzova', schema: z.enum(PRESET_IDS) },
   settings_reviewed: { def: false, schema: z.boolean() },
 };
 

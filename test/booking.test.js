@@ -214,6 +214,20 @@ test('klientka si přes odkaz změní termín: nabídka bez vlastního termínu,
   assert.equal((await c.post('/api/bookings/manage/reschedule', { token, starts_at: av.body.days[0].slots.find((s) => s.time === '15:00')?.start || target.start })).status, 403);
 });
 
+test('barvy webu: /theme.css podle nastavení, neplatná paleta se odmítne', async () => {
+  const c = new Client(server.url);
+  const r0 = await c.get('/theme.css');
+  assert.equal(r0.status, 200);
+  assert.match(String(r0.text ?? r0.body), /--mauve:#8c5a68/);
+  const admin = new Client(server.url);
+  assert.equal((await admin.login(ADMIN.email, ADMIN.password)).status, 200);
+  assert.equal((await admin.put('/api/admin/settings', { theme_dark: 'neexistuje' })).status, 400);
+  assert.equal((await admin.put('/api/admin/settings', { theme_dark: 'modra', theme_light: 'zelena' })).status, 200);
+  const r1 = await c.get('/theme.css');
+  assert.match(String(r1.text ?? r1.body), /data-theme=dark\]\{--mauve:hsl\(214/);
+  assert.match(String(r1.text ?? r1.body), /^:root\{--mauve:hsl\(150/);
+});
+
 test('administrace: nepřihlášený 401, klientka 403, bez CSRF 403, správce projde', async () => {
   const anon = new Client(server.url);
   assert.equal((await anon.get('/api/admin/dashboard')).status, 401);

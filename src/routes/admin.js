@@ -10,6 +10,7 @@ import { findConflicts } from '../services/availability.js';
 import { audit } from '../services/audit.js';
 import { enqueue } from '../services/jobs.js';
 import { DEFAULT_TEMPLATES, TEMPLATE_VARS } from '../services/templates.js';
+import { presetList } from '../services/theme.js';
 import { emailProviderConfigured, retryEmail, queueEmail } from '../services/email.js';
 import { calendarHealth } from '../calendar/health.js';
 import { requireAdmin } from './middleware.js';
@@ -260,7 +261,7 @@ export function mount(app) {
   });
 
   // ---------------------------------------------------------------- nastavení a obsah
-  app.get('/api/admin/settings', A, async () => ({ settings: await getSettings(), defaults: Object.fromEntries(Object.entries(SETTING_DEFS).map(([k, d]) => [k, d.def])) }));
+  app.get('/api/admin/settings', A, async () => ({ settings: await getSettings(), defaults: Object.fromEntries(Object.entries(SETTING_DEFS).map(([k, d]) => [k, d.def])), theme_presets: presetList() }));
   app.put('/api/admin/settings', A, async (ctx) => {
     const patch = await ctx.json();
     const changed = await updateSettings({ query }, patch);

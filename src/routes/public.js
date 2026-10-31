@@ -3,6 +3,7 @@ import { query } from '../db.js';
 import { rateLimit } from '../lib/http.js';
 import { HttpError, badRequest, notFound, conflict } from '../lib/errors.js';
 import { addDaysStr, localDateStr, parseDateStr } from '../lib/time.js';
+import { themeCss } from '../services/theme.js';
 import { getSettings } from '../services/settings.js';
 import { getContent } from '../services/content.js';
 import { computeAvailability } from '../services/availability.js';
@@ -57,6 +58,10 @@ export function mount(app) {
         hold_minutes: settings.hold_minutes, max_advance_days: settings.max_advance_days, timezone: settings.timezone,
       },
     };
+  });
+
+  app.get('/theme.css', async (ctx) => {
+    ctx.send(200, themeCss(await getSettings()), { 'Content-Type': 'text/css; charset=utf-8', 'Cache-Control': 'no-cache' });
   });
 
   app.get('/api/public/instagram', async () => ({ posts: await getPosts() }));

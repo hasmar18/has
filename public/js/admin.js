@@ -398,7 +398,7 @@ async function auditView() {
 // ---------- Nastavení (obecné, kalendář, Instagram) ----------
 const SET_FIELDS = [['online_booking_enabled', 'Online rezervace zapnuté', 'bool'], ['slot_interval_minutes', 'Krok nabízených časů (minuty)', 'num'], ['buffer_minutes', 'Rezerva mezi klientkami (minuty)', 'num'], ['min_notice_hours', 'Nejkratší předstih rezervace (hodiny)', 'num'], ['max_advance_days', 'Nejdále dopředu (dny)', 'num'], ['cancel_hours_before', 'Zrušit online lze nejpozději (hodin předem)', 'num'], ['require_email_verification', 'Vyžadovat ověření e-mailu kódem před potvrzením rezervace (vypnuto = rezervace se potvrdí hned)', 'bool'], ['hold_minutes', 'Platnost čekající rezervace při ověření (minuty)', 'num'], ['reminder_hours_before', 'Upomínky (hodin před termínem, oddělte čárkou; prázdné = žádné)', 'list'], ['admin_alert_email', 'E-mail pro upozornění správce (jinak e-mail správce)', 'text'], ['fail_closed', 'Při výpadku synchronizace kalendáře pozastavit online rezervace (doporučeno)', 'bool'], ['retention_months', 'Uchovávat údaje o rezervacích (měsíce)', 'num'], ['settings_reviewed', 'Potvrzuji, že jsem nastavení a právní texty zkontrolovala', 'bool']];
 async function settingsView(qs) {
-  const [{ settings }, cc, ig] = await Promise.all([api('/api/admin/settings'), api('/api/admin/calendar-connections'), api('/api/admin/instagram')]);
+  const [{ settings, theme_presets }, cc, ig] = await Promise.all([api('/api/admin/settings'), api('/api/admin/calendar-connections'), api('/api/admin/instagram')]);
   const ctl = {};
   const rows = SET_FIELDS.map(([k, label, t]) => {
     if (t === 'bool') { ctl[k] = h('input', { type: 'checkbox', id: `s-${k}`, ...(settings[k] ? { checked: true } : {}) }); return h('label', { class: 'check' }, ctl[k], h('span', { text: label })); }
@@ -409,7 +409,23 @@ async function settingsView(qs) {
     h('div', { class: 'panel' }, h('h2', { text: 'Obecné' }), ...rows, h('p', {}, h('button', { class: 'btn', onclick: guard(async () => {
       const body = {}; for (const [k, , t] of SET_FIELDS) { const el = ctl[k]; body[k] = t === 'bool' ? el.checked : t === 'num' ? +el.value : t === 'list' ? el.value.split(',').map((x) => x.trim()).filter(Boolean).map(Number) : el.value.trim(); }
       await api('/api/admin/settings', { method: 'PUT', body }); toast('Nastavení uloženo'); }) }, 'Uložit nastavení'))),
+    appearancePanel(settings, theme_presets),
     calendarPanel(cc), instagramPanel(ig));
+}
+function appearancePanel(settings, presets) {
+  const sel = { light: settings.theme_light || 'ruzova', dark: settings.theme_dark || 'ruzova' };
+  const rows = h('div', {});
+  const draw = () => rows.replaceChildren(...[['light', 'Světlý režim'], ['dark', 'Tmavý režim (výchozí na webu)']].map(([mode, label]) => h('div', { style: 'margin:12px 0' },
+    h('strong', { text: label }),
+    h('div', { class: 'row', role: 'radiogroup', 'aria-label': label, style: 'gap:10px;margin-top:8px;flex-wrap:wrap' }, presets.map((p) => h('button', {
+      type: 'button', role: 'radio', 'aria-checked': String(sel[mode] === p.id), title: p.label, 'aria-label': p.label,
+      style: `display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;cursor:pointer;font:inherit;font-size:.75rem;color:inherit`,
+      onclick: () => { sel[mode] = p.id; draw(); },
+    }, h('span', { style: `width:44px;height:44px;border-radius:50%;background:${p[mode]};border:3px solid ${sel[mode] === p.id ? 'currentColor' : 'transparent'};box-shadow:0 0 0 1px rgba(0,0,0,.25)` }), p.label))))));
+  draw();
+  return h('div', { class: 'panel' }, h('h2', { text: 'Barvy webu' }),
+    h('p', { class: 'muted small', text: 'Vyberte barevnou paletu pro světlý a tmavý režim. Platí pro veřejný web (ne pro administraci).' }), rows,
+    h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/settings', { method: 'PUT', body: { theme_light: sel.light, theme_dark: sel.dark } }); toast('Barvy uloženy – na webu se projeví po obnovení stránky'); }) }, 'Uložit barvy')));
 }
 function calendarPanel(cc) {
   const reload = () => settingsView();
