@@ -25,10 +25,34 @@ export function paletteVars(p, mode) {
 }
 const decl = (v) => Object.entries(v).map(([k, x]) => `--${k}:${x}`).join(';');
 
+const HEX = /^#[0-9a-f]{6}$/i;
+export const isHex = (v) => typeof v === 'string' && HEX.test(v);
+function hexToHsl(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255; const g = parseInt(hex.slice(3, 5), 16) / 255; const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b); const min = Math.min(r, g, b); const l = (max + min) / 2; const d = max - min;
+  let h = 0; let s = 0;
+  if (d) {
+    s = d / (1 - Math.abs(2 * l - 1));
+    if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h = Math.round(((h * 60) + 360) % 360);
+  }
+  return { h, s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+/** Vlastní barva: tlačítka/zvýraznění = přesně vybraná barva, ostatní odstíny se dopočítají ze stejného odstínu. */
+export function customVars(hex, mode) {
+  const { h, s, l } = hexToHsl(hex);
+  const sc = Math.min(s, 60);
+  return mode === 'dark'
+    ? { mauve: hex.toLowerCase(), 'mauve-d': hsl(h, Math.min(sc + 6, 50), 78), rose: hsl(h, Math.round(sc * 0.6), 28), blush: hsl(h, Math.round(sc * 0.45), 13), tint: hsl(h, Math.round(sc * 0.45), 11.5), tint2: hsl(h, Math.round(sc * 0.45), 10.5) }
+    : { mauve: hex.toLowerCase(), 'mauve-d': hsl(h, s, Math.max(l - 10, 12)), rose: hsl(h, Math.min(Math.round(sc * 1.3), 60), 83), blush: hsl(h, Math.min(Math.round(sc * 1.3), 60), 91), tint: hsl(h, Math.min(Math.round(sc * 1.5), 70), 96), tint2: hsl(h, Math.min(Math.round(sc * 1.1), 55), 95) };
+}
+
 export function themeCss(settings) {
   const find = (id) => PRESETS.find((p) => p.id === id) || PRESETS[0];
   const l = find(settings.theme_light); const d = find(settings.theme_dark);
-  return `:root{${decl(paletteVars(l, 'light'))}}\n:root[data-theme=dark]{${decl(paletteVars(d, 'dark'))}}\n`;
+  const lv = isHex(settings.theme_light_custom) ? customVars(settings.theme_light_custom, 'light') : paletteVars(l, 'light');
+  const dv = isHex(settings.theme_dark_custom) ? customVars(settings.theme_dark_custom, 'dark') : paletteVars(d, 'dark');
+  return `:root{${decl(lv)}}\n:root[data-theme=dark]{${decl(dv)}}\n`;
 }
 
 export const presetList = () => PRESETS.map((p) => ({ id: p.id, label: p.label, light: paletteVars(p, 'light').mauve, dark: paletteVars(p, 'dark').mauve }));

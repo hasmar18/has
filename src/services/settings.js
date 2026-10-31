@@ -23,6 +23,8 @@ export const SETTING_DEFS = {
   retention_months: { def: 24, schema: z.number().int().min(1).max(120) },
   theme_light: { def: 'ruzova', schema: z.enum(PRESET_IDS) },
   theme_dark: { def: 'ruzova', schema: z.enum(PRESET_IDS) },
+  theme_light_custom: { def: '', schema: z.union([z.literal(''), z.string().regex(/^#[0-9a-fA-F]{6}$/)]) },
+  theme_dark_custom: { def: '', schema: z.union([z.literal(''), z.string().regex(/^#[0-9a-fA-F]{6}$/)]) },
   settings_reviewed: { def: false, schema: z.boolean() },
 };
 

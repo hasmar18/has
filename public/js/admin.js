@@ -414,18 +414,31 @@ async function settingsView(qs) {
 }
 function appearancePanel(settings, presets) {
   const sel = { light: settings.theme_light || 'ruzova', dark: settings.theme_dark || 'ruzova' };
+  const custom = { light: settings.theme_light_custom || '', dark: settings.theme_dark_custom || '' };
+  const lum = (hex) => { const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+  const contrastWhite = (hex) => 1.05 / (lum(hex) + 0.05);
   const rows = h('div', {});
-  const draw = () => rows.replaceChildren(...[['light', 'Světlý režim'], ['dark', 'Tmavý režim (výchozí na webu)']].map(([mode, label]) => h('div', { style: 'margin:12px 0' },
-    h('strong', { text: label }),
-    h('div', { class: 'row', role: 'radiogroup', 'aria-label': label, style: 'gap:10px;margin-top:8px;flex-wrap:wrap' }, presets.map((p) => h('button', {
-      type: 'button', role: 'radio', 'aria-checked': String(sel[mode] === p.id), title: p.label, 'aria-label': p.label,
-      style: `display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;cursor:pointer;font:inherit;font-size:.75rem;color:inherit`,
-      onclick: () => { sel[mode] = p.id; draw(); },
-    }, h('span', { style: `width:44px;height:44px;border-radius:50%;background:${p[mode]};border:3px solid ${sel[mode] === p.id ? 'currentColor' : 'transparent'};box-shadow:0 0 0 1px rgba(0,0,0,.25)` }), p.label))))));
+  const draw = () => rows.replaceChildren(...[['light', 'Světlý režim'], ['dark', 'Tmavý režim (výchozí na webu)']].map(([mode, label]) => {
+    const cur = custom[mode] || presets.find((p) => p.id === sel[mode])?.[mode] || '#8c5a68';
+    const picker = h('input', { type: 'color', value: cur, 'aria-label': `Vlastní barva – ${label}`, style: 'width:44px;height:44px;padding:0;border:0;background:none;cursor:pointer',
+      oninput: (e) => { custom[mode] = e.target.value; },
+      onchange: (e) => { custom[mode] = e.target.value; draw(); } });
+    return h('div', { style: 'margin:14px 0' },
+      h('strong', { text: label }),
+      h('div', { class: 'row', role: 'radiogroup', 'aria-label': label, style: 'gap:10px;margin-top:8px;flex-wrap:wrap;align-items:flex-start' },
+        presets.map((p) => h('button', {
+          type: 'button', role: 'radio', 'aria-checked': String(!custom[mode] && sel[mode] === p.id), title: p.label, 'aria-label': p.label,
+          style: 'display:flex;flex-direction:column;align-items:center;gap:4px;background:none;border:0;cursor:pointer;font:inherit;font-size:.75rem;color:inherit',
+          onclick: () => { sel[mode] = p.id; custom[mode] = ''; draw(); },
+        }, h('span', { style: `width:44px;height:44px;border-radius:50%;background:${p[mode]};border:3px solid ${!custom[mode] && sel[mode] === p.id ? 'currentColor' : 'transparent'};box-shadow:0 0 0 1px rgba(0,0,0,.25)` }), p.label)),
+        h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:4px;font-size:.75rem' },
+          h('span', { style: `display:inline-block;border-radius:50%;overflow:hidden;width:44px;height:44px;border:3px solid ${custom[mode] ? 'currentColor' : 'transparent'};box-shadow:0 0 0 1px rgba(0,0,0,.25)` }, picker), 'Vlastní')),
+      custom[mode] && contrastWhite(custom[mode]) < 3 ? h('p', { class: 'small', style: 'color:#a3263d;margin:6px 0 0', text: 'Tahle barva je příliš světlá – bílý text na tlačítkách bude špatně čitelný. Zvolte tmavší nebo sytější.' }) : '');
+  }));
   draw();
   return h('div', { class: 'panel' }, h('h2', { text: 'Barvy webu' }),
-    h('p', { class: 'muted small', text: 'Vyberte barevnou paletu pro světlý a tmavý režim. Platí pro veřejný web (ne pro administraci).' }), rows,
-    h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/settings', { method: 'PUT', body: { theme_light: sel.light, theme_dark: sel.dark } }); toast('Barvy uloženy – na webu se projeví po obnovení stránky'); }) }, 'Uložit barvy')));
+    h('p', { class: 'muted small', text: 'Vyberte hotovou paletu nebo kliknutím na „Vlastní“ zvolte libovolnou barvu. Platí pro veřejný web (ne pro administraci), zvlášť pro světlý a tmavý režim.' }), rows,
+    h('p', {}, h('button', { class: 'btn', onclick: guard(async () => { await api('/api/admin/settings', { method: 'PUT', body: { theme_light: sel.light, theme_dark: sel.dark, theme_light_custom: custom.light, theme_dark_custom: custom.dark } }); toast('Barvy uloženy – na webu se projeví po obnovení stránky'); }) }, 'Uložit barvy')));
 }
 function calendarPanel(cc) {
   const reload = () => settingsView();
