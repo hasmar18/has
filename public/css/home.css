@@ -103,6 +103,7 @@
   .hb footer.site{padding-bottom:96px}
 }
 @media (prefers-reduced-motion:reduce){
-  .hb-drop{transform:none;opacity:1;transition:none}
+  .hb-drop{transition:opacity .2s}
+  .hb-drop,.hb-drop.in{transform:none}
   .hb-row::before,.hb-mb,.hb-bio span{transition:none}
 }

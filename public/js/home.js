@@ -172,7 +172,9 @@ function step() {
 function onScroll(snap) {
   const y = scrollY; const vh = innerHeight;
   const doc = document.documentElement.scrollHeight;
-  target = RM || y + vh >= doc - 4 ? L : lookup(y + vh * 0.72);
+  // Tah se dokresluje podle scrollu vždy (pohyb řídí sám návštěvník). Při „omezit pohyb“ jen bez dojezdu;
+  // paralaxa fotek a postupné rozsvěcení textu zůstávají v tom režimu vypnuté.
+  target = y + vh >= doc - 4 ? L : lookup(y + vh * 0.72);
   if (RM || snap === true) { cur = target; draw(cur); } else if (!raf) raf = requestAnimationFrame(step);
   const words = $$('#bio span');
   if (words.length) {
