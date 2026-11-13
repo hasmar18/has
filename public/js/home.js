@@ -1,6 +1,6 @@
 // Úvodní stránka (návrh B). Obsah se načítá stejně jako dřív z /api/public/bootstrap – texty, služby, ceny,
 // galerie i kontakt se dál spravují v administraci. Žádné inline styly ani skripty (platí přísné CSP).
-import { $, $$, h, initPage, telHref, mapsDir, api, dur, money } from './common.js';
+import { $, $$, h, initPage, telHref, mapsDir, api, dur, money, WD, dateParts } from './common.js';
 
 const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
@@ -25,6 +25,17 @@ function fingers(box, items) {
 }
 
 const boot = await initPage('/');
+// Záhlaví úvodní stránky: vidět je jen „Rezervovat“, ostatní odkazy jsou schované pod tlačítkem Menu.
+{
+  const nav = $('#mainnav'); const top = nav && $('.btn', nav); const mb = $('.menu-btn');
+  if (nav && top && mb) {
+    mb.before(top);
+    const close = () => { nav.classList.remove('open'); mb.setAttribute('aria-expanded', 'false'); };
+    nav.addEventListener('click', (e) => { if (e.target.closest('a')) close(); });
+    document.addEventListener('click', (e) => { if (!e.target.closest('header.site')) close(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+  }
+}
 if (boot) {
   const c = boot.content;
   const sub = c.hero_subtitle || '';
@@ -43,7 +54,10 @@ if (boot) {
   $('#bio').replaceChildren(bioText.trim().split(/\s+/).filter(Boolean).flatMap((w) => [h('span', { text: w }), ' ']));
   const extra = longSub && c.about_text ? c.about_text : '';
   $('#about-text').textContent = extra; $('#about-text').hidden = !extra;
-  $('#bio-img').alt = c.contact_name || 'HASNAILS';
+  // Fotka: v administraci (Galerie) jde zvolit „Použít jako fotku O mně“; jinak výchozí fotka.
+  const hero = boot.gallery.find((g) => g.is_hero);
+  if (hero) $('#bio-img').src = `/media/${hero.id}`;
+  $('#bio-img').alt = (hero && hero.alt) || c.contact_name || 'HASNAILS';
   $('#bio-img').addEventListener('error', () => { $('#bio-img').closest('figure').hidden = true; });
 
   $('#svc-intro').textContent = c.services_intro; $('#svc-intro').hidden = !c.services_intro;
@@ -51,8 +65,9 @@ if (boot) {
   if (!boot.categories.length) box.append(h('p', { class: 'muted', text: 'Ceník bude brzy doplněn. Služby a ceny vám rádi sdělíme telefonicky.' }));
   for (const cat of boot.categories) box.append(h('div', { class: 'hb-cat' }, h('h3', { text: cat.name }), h('ul', {}, cat.services.map(serviceRow))));
 
-  if (boot.gallery.length) {
-    const items = boot.gallery.map((g) => ({ src: `/media/${g.id}`, alt: g.alt || 'Ukázka práce – HASNAILS' }));
+  const photos = boot.gallery.filter((g) => !g.is_hero);
+  if (photos.length) {
+    const items = photos.map((g) => ({ src: `/media/${g.id}`, alt: g.alt || 'Ukázka práce – HASNAILS' }));
     $('#galerie').hidden = false; $('#gal-title').textContent = c.gallery_title;
     fingers($('#gallery'), items);
     const rest = items.slice(5);
@@ -67,6 +82,18 @@ if (boot) {
       relayout();
     }).catch(() => { if (c.instagram_url) igLink(); });
   } else if (c.instagram_url) igLink();
+
+  // Nejbližší volný termín: stačí nejkratší služba – kdy je volno pro ni, je to nejbližší volno vůbec.
+  const all = boot.categories.flatMap((k) => k.services);
+  if (boot.booking.enabled && all.length) {
+    const s = all.reduce((a, b) => (b.duration_minutes < a.duration_minutes ? b : a));
+    api(`/api/public/availability?service_id=${encodeURIComponent(s.id)}`).then((r) => {
+      const d = (r.days || []).find((x) => x.slots.length); if (!d) return;
+      const p = dateParts(d.date);
+      $('#next-link').textContent = `Nejbližší volný termín: ${WD[p.wd]} ${p.d}. ${p.m}. v ${d.slots[0].time}`;
+      $('#next').hidden = false;
+    }).catch(() => {});
+  }
 
   $('#info').hidden = !(c.client_info_text || c.cancellation_text); $('#info-title').textContent = c.client_info_text ? c.client_info_title : ''; $('#info-title').hidden = !c.client_info_text; $('#info-text').textContent = c.client_info_text;
   $('#cancel-card').hidden = !c.cancellation_text; $('#cancel-text').textContent = c.cancellation_text;
