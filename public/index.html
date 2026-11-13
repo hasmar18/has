@@ -2,15 +2,22 @@
 <html lang="cs"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HASNAILS</title>
 <meta name="description" content="HASNAILS – ceník služeb a online rezervace.">
-<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#0e0e0e"><script src="/js/theme.js"></script><link rel="manifest" href="/site.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="HASNAILS"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/theme.css"></head>
-<body><main id="main">
-<section class="hero"><div class="wrap"><h1 id="hero-title">HASNAILS</h1><p class="lead" id="hero-sub"></p>
-<div class="actions"><a class="btn" href="/rezervace">Rezervovat termín</a><a class="btn ghost" href="/kontakt">Kontakt a mapa</a></div></div></section>
-<section class="block" id="about" hidden><div class="wrap narrow"><h2 id="about-title"></h2><p class="pre" id="about-text"></p></div></section>
-<section class="block alt" id="sluzby"><div class="wrap narrow"><h2>Služby a ceník</h2><p class="muted" id="svc-intro"></p><div id="services"><span class="spin"></span></div><a class="btn" href="/rezervace">Rezervovat termín</a></div></section>
-<section class="block" id="galerie" hidden><div class="wrap"><h2 id="gal-title"></h2><div class="gallery" id="gallery"></div></div></section>
-<section class="block alt" id="instagram" hidden><div class="wrap"><h2 id="ig-title"></h2><div class="gallery" id="ig-posts"></div><p><a id="ig-link" class="btn ghost" rel="noopener" target="_blank">Otevřít Instagram</a></p></div></section>
-<section class="block" id="info" hidden><div class="wrap narrow"><h2 id="info-title"></h2><p class="pre" id="info-text"></p>
+<link rel="icon" href="/favicon.ico" sizes="any"><link rel="icon" href="/favicon-96.png" type="image/png" sizes="96x96"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><meta name="theme-color" content="#0e0e0e"><script src="/js/theme.js"></script><link rel="manifest" href="/site.webmanifest"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="HASNAILS"><link rel="stylesheet" href="/css/site.css"><link rel="stylesheet" href="/theme.css"><link rel="stylesheet" href="/css/home.css"></head>
+<body class="hb">
+<svg id="rib" class="hb-rib" aria-hidden="true" focusable="false"><defs><linearGradient id="hb-lg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="1000"><stop class="hb-s1" offset="0"/><stop class="hb-s2" offset=".34"/><stop class="hb-s3" offset=".68"/><stop class="hb-s1" offset="1"/></linearGradient></defs><path id="r1" fill="none" stroke="url(#hb-lg)" stroke-linecap="round"/><path id="r2" fill="none" stroke="#fff" stroke-opacity=".28" stroke-linecap="round"/></svg>
+<main id="main">
+<section class="hb-hero"><div class="wrap"><h1 id="hero-title">HASNAILS</h1><p class="hb-lead" id="hero-sub" hidden></p>
+<div class="hb-acts"><a class="btn" href="/rezervace">Rezervovat termín</a><a class="btn ghost" id="hero-call" hidden></a><a class="btn ghost" href="/kontakt">Kontakt a mapa</a></div></div></section>
+<section class="hb-sec" id="about" hidden data-cross><div class="wrap"><div class="hb-hz"><h2 id="about-title" hidden></h2></div>
+<div class="hb-ab"><div><p class="hb-bio" id="bio"></p><p class="pre" id="about-text" hidden></p></div><figure class="hb-arch"><img id="bio-img" src="/img/o-mne.jpg" alt="" width="900" height="1200" loading="lazy"></figure></div></div></section>
+<section class="hb-sec" id="sluzby" data-cross><div class="wrap"><div class="hb-hz"><h2>Služby a ceník</h2></div><p class="muted" id="svc-intro" hidden></p><div id="services"><span class="spin"></span></div>
+<p class="hb-acts"><a class="btn" href="/rezervace">Rezervovat termín</a><a class="btn ghost" href="/cenik">Ceník</a></p></div></section>
+<section class="hb-sec" id="galerie" hidden data-cross><div class="wrap"><div class="hb-hz"><h2 id="gal-title"></h2></div><div class="hb-fingers" id="gallery"></div><div class="gallery hb-more" id="gallery-more" hidden></div></div></section>
+<section class="hb-sec" id="instagram" hidden><div class="wrap"><h2 class="hb-h2s" id="ig-title"></h2><div class="hb-fingers" id="ig-posts" hidden></div><p class="hb-acts"><a id="ig-link" class="btn ghost" rel="noopener" target="_blank">Otevřít Instagram</a></p></div></section>
+<section class="hb-sec" id="info" hidden><div class="wrap narrow"><h2 class="hb-h2s" id="info-title"></h2><p class="pre" id="info-text"></p>
 <div class="card" id="cancel-card" hidden><h3>Storno podmínky</h3><p class="pre" id="cancel-text"></p></div></div></section>
-<section class="block alt"><div class="wrap narrow"><h2>Kde nás najdete</h2><p id="addr"></p><p><a class="tel" id="tel"></a></p><div class="row"><a class="btn" id="nav-btn" rel="noopener" target="_blank">Navigovat</a><a class="btn ghost" id="call-btn">Zavolat</a></div></div></section>
-</main><script type="module" src="/js/home.js"></script></body></html>
+<section class="hb-sec hb-cta"><div class="wrap"><a class="hb-drop" id="drop" href="/rezervace">Rezervovat<br>termín</a></div></section>
+<section class="hb-sec hb-kontakt"><div class="wrap"><h2 class="hb-h2s">Kde nás najdete</h2><div class="hb-kt"><p class="hb-addr" id="addr"></p><div><p><a class="tel" id="tel"></a></p><div class="row"><a class="btn" id="nav-btn" rel="noopener" target="_blank">Navigovat</a><a class="btn ghost" id="call-btn">Zavolat</a></div></div></div></div></section>
+</main>
+<div class="hb-mb" id="mb"><a class="btn" href="/rezervace">Rezervovat termín</a><a class="btn ghost" id="mb-call">Zavolat</a></div>
+<script type="module" src="/js/home.js"></script></body></html>
