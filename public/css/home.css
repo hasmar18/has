@@ -1,5 +1,12 @@
 /* Úvodní stránka – návrh B (tah lakem). Platí jen pro <body class="hb">; ostatní stránky a administrace tento soubor nenačítají.
    Barvy se berou z proměnných webu (site.css + /theme.css), takže funguje světlý i tmavý režim i barva z nastavení. */
+@font-face{font-family:"Bodoni Display";src:url(/fonts/bodoni-display.ttf) format("truetype");font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:"Bodoni Moda";src:url(/fonts/bodoni-text.ttf) format("truetype");font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:"Bodoni Moda";src:url(/fonts/bodoni-italic.ttf) format("truetype");font-weight:400 600;font-style:italic;font-display:swap}
+@font-face{font-family:"Instrument Sans";src:url(/fonts/instrument-regular.ttf) format("truetype");font-weight:400 500;font-style:normal;font-display:swap}
+@font-face{font-family:"Instrument Sans";src:url(/fonts/instrument-semibold.ttf) format("truetype");font-weight:600 700;font-style:normal;font-display:swap}
+.hb{--serif:"Bodoni Moda",Georgia,"Times New Roman",serif;--sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-family:var(--sans)}
+.hb-hero h1,.hb-hz h2,.hb-h2s{font-family:"Bodoni Display",var(--serif);font-weight:500}
 .hb{position:relative;overflow-x:hidden;overflow-x:clip}
 .hb main{position:relative;z-index:1}
 .hb-rib{position:absolute;top:0;left:0;z-index:0;pointer-events:none}
