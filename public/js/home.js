@@ -111,16 +111,28 @@ let L = 0; let ys = []; let cur = 0; let target = 0; let raf = 0; let H = 0; let
 const pageTop = (e) => e.getBoundingClientRect().top + scrollY;
 const pageBottom = (e) => e.getBoundingClientRect().bottom + scrollY;
 
+let lastW = 0; let lastH = 0;
 function build() {
   const W = document.documentElement.clientWidth;
   H = Math.ceil(pageBottom(main));
+  // mobilní prohlížeče hlásí „resize“ i při schování adresního řádku – zbytečně nepřepočítávat
+  if (built && W === lastW && Math.abs(H - lastH) < 4) return;
+  lastW = W; lastH = H;
   svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   $('#hb-lg').setAttribute('y2', H);
-  const w = clamp(W * 0.05, 30, 84); const eL = W < 1260 ? 0 : (W - 1140) / 2 * 0.5; const eR = W - eL;
+  const mobile = W < 820;
+  const w = mobile ? 30 : clamp(W * 0.05, 30, 84); const eL = W < 1260 ? 0 : (W - 1140) / 2 * 0.5; const eR = W - eL;
   const side = (right) => (right ? eR : eL);
   let right = true;
   const pts = [[eL + W * 0.06, -90]];
   const push = (x, y) => { if (y > pts[pts.length - 1][1] + 8) pts.push([x, y]); };
+  let oy = 0; for (let e = drop; e; e = e.offsetParent) oy += e.offsetTop;
+  if (mobile) {
+    // na mobilu tah teče středem stránky za obsahem (jemnější, viz home.css) a vlní se ze strany na stranu
+    pts[0] = [W * 0.22, -90];
+    const stepY = innerHeight * 0.62; const stop = oy - Math.min(innerHeight * 0.3, 260);
+    for (let y = innerHeight * 0.34; y < stop - stepY * 0.4; y += stepY) { push(right ? W * 0.84 : W * 0.16, y); right = !right; }
+  } else {
   // úvod: přechod zleva doprava nad nadpisem
   push(side(right), pageTop($('#hero-title')) - 28);
   for (const sec of $$('[data-cross]')) {
@@ -130,8 +142,8 @@ function build() {
     right = !right;
     push(side(right), (head ? pageTop(head) : pageBottom(zone)) - 28);
   }
-  let oy = 0; for (let e = drop; e; e = e.offsetParent) oy += e.offsetTop;
-  push(side(right), oy - Math.min(innerHeight * 0.3, 260));
+  }
+  if (!mobile) push(side(right), oy - Math.min(innerHeight * 0.3, 260));
   push(W / 2, oy + drop.offsetHeight * 0.3);
   let d = `M${pts[0][0]},${pts[0][1]}`;
   for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1]; const [x1, y1] = pts[i]; const m = (y0 + y1) / 2; d += ` C${x0},${m} ${x1},${m} ${x1},${y1}`; }

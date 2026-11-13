@@ -84,6 +84,7 @@
 
 .hb-mb{display:none}
 @media (max-width:820px){
+  .hb-rib{opacity:.5}
   .hb-hz{min-height:34vh}
   .hb-hero .hb-acts .btn{width:100%}
   .hb-ab{grid-template-columns:1fr;gap:7vh}
